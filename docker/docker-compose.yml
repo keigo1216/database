@@ -1,0 +1,11 @@
+version: '3.2'
+
+services:
+  rust:
+    build: ./rust/
+    container_name: rust
+    volumes:
+      - type: bind
+        source: ../src
+        target: /usr/src/
+    tty: true
