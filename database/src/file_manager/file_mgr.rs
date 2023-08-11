@@ -49,7 +49,7 @@ impl FileMgr {
     }
 
     pub fn read(&self, blk: &BlockId, p: &mut Page) -> Result<(), FileManagerError> {
-        match OpenOptions::new().read(true).open(blk.filename()) { // open file
+        match OpenOptions::new().read(true).open(self.get_path(blk.filename())) { // open file
             Ok(file) => {
                 let offset = (blk.number() * self.block_size) as u64;
                 let mut byte_buffer = p.contents().into_vec();
@@ -66,7 +66,7 @@ impl FileMgr {
     }
 
     pub fn write(&self, blk: &BlockId, p: &mut Page) -> Result<(), FileManagerError> {
-        match OpenOptions::new().write(true).create(true).open(blk.filename()){ // open file
+        match OpenOptions::new().write(true).create(true).open(self.get_path(blk.filename())){ // open file
             Ok(file) => {
                 let offset = (blk.number() * self.block_size) as u64;
                 match file.write_all_at(&mut p.contents().into_vec(), offset) { // write to file
@@ -79,12 +79,12 @@ impl FileMgr {
     } 
 
     pub fn append(&self, filename: String) -> Result<BlockId, FileManagerError> {
-        let newblknum = match fs::metadata(filename.clone()) {
+        let newblknum = match fs::metadata(self.get_path(filename.clone())) {
             Ok(metadata) => ((metadata.len() +(self.block_size - 1) as u64) / self.block_size as u64) as i32,
             Err(_) => return Err(FileManagerError::FileNotFound)
         };
         let blk = BlockId::new(filename, newblknum);
-        match OpenOptions::new().write(true).open(blk.filename()) {
+        match OpenOptions::new().write(true).open(self.get_path(blk.filename())) {
             Ok(file) => {
                 let offset = (blk.number() * self.block_size) as u64;
                 match file.write_all_at(&mut vec![0; self.block_size as usize], offset) {
@@ -111,15 +111,12 @@ impl FileMgr {
         self.block_size
     }
 
-    pub fn get_file(&self, filename: String) -> Result<File, FileManagerError> {
+    pub fn get_path(&self, filename: String) -> String {
         // create path to file
         let mut path = PathBuf::from(self.db_directory.clone());
         path.push(filename);
 
-        match OpenOptions::new().read(true).write(true).open(path) {
-            Ok(file) => Ok(file),
-            Err(_) => Err(FileManagerError::FileNotFound),
-        }
+        path.to_str().unwrap().to_string()
     }
 
 }
@@ -183,7 +180,7 @@ mod tests {
             file.write_all("Hello World!. My Name is hogehoge.".as_bytes()).unwrap();
 
             // read block
-            let block_id = BlockId::new(db_directory.clone() + "/test.txt", 0);
+            let block_id = BlockId::new("test.txt".to_string(), 0);
             let result = file_mgr.read(&block_id, &mut page);
 
             match result {
@@ -209,7 +206,7 @@ mod tests {
             File::create(db_directory.clone() + "/test.txt").unwrap();
 
             // write block
-            let block_id = BlockId::new(db_directory.clone() + "/test.txt", 0);
+            let block_id = BlockId::new("test.txt".to_string(), 0);
             let result = file_mgr.write(&block_id, &mut page);
 
             match result {
@@ -241,7 +238,7 @@ mod tests {
             file.write_all(message.as_bytes()).unwrap();
 
             // append block
-            let result = file_mgr.append(db_directory.clone() + "/test.txt");
+            let result = file_mgr.append("test.txt".to_string());
 
             match result {
                 Ok(_) => (),
