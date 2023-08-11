@@ -6,6 +6,6 @@ services:
     container_name: rust
     volumes:
       - type: bind
-        source: ../src
+        source: ../
         target: /usr/src/
     tty: true
