@@ -19,7 +19,9 @@ impl Page {
 
     // A constructor for creating log buffers
     pub fn new_log(b: Vec<u8>) -> Self {
-        Self { bb: ByteBuffer::from_vec(b) }
+        Self {
+            bb: ByteBuffer::from_vec(b),
+        }
     }
 
     pub fn set_byte_buffer(&mut self, bb: ByteBuffer) -> () {
@@ -85,11 +87,10 @@ impl Page {
 mod tests {
 
     use super::*;
-    use anyhow::{Result, Ok};
+    use anyhow::{Ok, Result};
 
     #[test]
     fn test_page() -> Result<()> {
-
         // test fn new
         {
             let page = Page::new(400);
@@ -134,7 +135,6 @@ mod tests {
             assert_eq!(page.get_bytes(0).unwrap(), vec![5, 6]);
         }
 
-
         // test fn set_bytes
         {
             let mut page = Page::new_log(vec![0, 0, 0, 2, 5, 6]);
@@ -146,7 +146,10 @@ mod tests {
         // test fn get_string
         {
             let mut page = Page::new_log(vec![0, 0, 0, 2, 5, 6]);
-            assert_eq!(page.get_string(0).unwrap(), String::from_utf8(vec![5, 6]).unwrap());
+            assert_eq!(
+                page.get_string(0).unwrap(),
+                String::from_utf8(vec![5, 6]).unwrap()
+            );
         }
 
         // test fn set_string

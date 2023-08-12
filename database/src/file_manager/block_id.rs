@@ -1,6 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use std::fmt::Display;
+use std::hash::{Hash, Hasher};
 
 #[derive(Clone, PartialEq)]
 pub struct BlockId {
@@ -10,7 +10,7 @@ pub struct BlockId {
 
 impl BlockId {
     pub fn new(filename: String, blknum: i32) -> Self {
-        Self { filename, blknum}
+        Self { filename, blknum }
     }
 
     pub fn filename(&self) -> String {

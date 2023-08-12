@@ -1,6 +1,6 @@
 pub mod block_id;
-pub mod page;
 pub mod file_mgr;
+pub mod page;
 
 pub enum FileManagerError {
     FileOpenError,
@@ -12,7 +12,7 @@ pub enum FileManagerError {
 
 #[cfg(test)]
 mod tests {
-    use super::{file_mgr::FileMgr, block_id::BlockId, page::Page};
+    use super::{block_id::BlockId, file_mgr::FileMgr, page::Page};
 
     #[test]
     pub fn test_file_manager() {

@@ -1,11 +1,11 @@
-use std::fs::{self, File};
+use bytebuffer::ByteBuffer;
 use std::fs::OpenOptions;
+use std::fs::{self, File};
 use std::os::unix::prelude::FileExt;
 use std::path::PathBuf;
-use bytebuffer::ByteBuffer;
 
-use crate::file_manager::page::Page;
 use crate::file_manager::block_id::BlockId;
+use crate::file_manager::page::Page;
 use crate::file_manager::FileManagerError;
 
 pub struct FileMgr {
@@ -18,7 +18,7 @@ impl FileMgr {
     pub fn new(db_directory: String, block_size: i32) -> Self {
         let is_new = !match fs::metadata(db_directory.clone()) {
             Ok(_) => true,
-            Err(_) => false
+            Err(_) => false,
         };
 
         // create directory if not exists
@@ -49,57 +49,75 @@ impl FileMgr {
     }
 
     pub fn read(&self, blk: &BlockId, p: &mut Page) -> Result<(), FileManagerError> {
-        match OpenOptions::new().read(true).open(self.get_path(blk.filename())) { // open file
+        match OpenOptions::new()
+            .read(true)
+            .open(self.get_path(blk.filename()))
+        {
+            // open file
             Ok(file) => {
                 let offset = (blk.number() * self.block_size) as u64;
                 let mut byte_buffer = p.contents().into_vec();
-                match file.read_exact_at(&mut byte_buffer, offset) { // read block
+                match file.read_exact_at(&mut byte_buffer, offset) {
+                    // read block
                     Ok(_) => {
                         p.set_byte_buffer(ByteBuffer::from_vec(byte_buffer));
                         Ok(())
-                    },
+                    }
                     Err(_) => Err(FileManagerError::ReadBlockError(blk.clone())),
                 }
-            },
+            }
             Err(_) => Err(FileManagerError::FileOpenError),
         }
     }
 
     pub fn write(&self, blk: &BlockId, p: &mut Page) -> Result<(), FileManagerError> {
-        match OpenOptions::new().write(true).create(true).open(self.get_path(blk.filename())){ // open file
+        match OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(self.get_path(blk.filename()))
+        {
+            // open file
             Ok(file) => {
                 let offset = (blk.number() * self.block_size) as u64;
-                match file.write_all_at(&mut p.contents().into_vec(), offset) { // write to file
+                match file.write_all_at(&mut p.contents().into_vec(), offset) {
+                    // write to file
                     Ok(_) => Ok(()),
                     Err(_) => Err(FileManagerError::WriteBlockError(blk.clone())),
                 }
-            },
+            }
             Err(_) => Err(FileManagerError::FileOpenError),
         }
-    } 
+    }
 
     pub fn append(&self, filename: String) -> Result<BlockId, FileManagerError> {
         let newblknum = match fs::metadata(self.get_path(filename.clone())) {
-            Ok(metadata) => ((metadata.len() +(self.block_size - 1) as u64) / self.block_size as u64) as i32,
-            Err(_) => return Err(FileManagerError::FileNotFound)
+            Ok(metadata) => {
+                ((metadata.len() + (self.block_size - 1) as u64) / self.block_size as u64) as i32
+            }
+            Err(_) => return Err(FileManagerError::FileNotFound),
         };
         let blk = BlockId::new(filename, newblknum);
-        match OpenOptions::new().write(true).open(self.get_path(blk.filename())) {
+        match OpenOptions::new()
+            .write(true)
+            .open(self.get_path(blk.filename()))
+        {
             Ok(file) => {
                 let offset = (blk.number() * self.block_size) as u64;
                 match file.write_all_at(&mut vec![0; self.block_size as usize], offset) {
                     Ok(_) => Ok(blk),
                     Err(_) => Err(FileManagerError::AppendBlockError(blk.clone())),
                 }
-            },
+            }
             Err(_) => Err(FileManagerError::FileOpenError),
         }
     }
 
     pub fn length(&self, filename: String) -> Result<i32, FileManagerError> {
         match fs::metadata(filename) {
-            Ok(metadata) => Ok(((metadata.len() +(self.block_size - 1) as u64) / self.block_size as u64) as i32),
-            Err(_) => Err(FileManagerError::FileNotFound)
+            Ok(metadata) => Ok(
+                ((metadata.len() + (self.block_size - 1) as u64) / self.block_size as u64) as i32
+            ),
+            Err(_) => Err(FileManagerError::FileNotFound),
         }
     }
 
@@ -118,7 +136,6 @@ impl FileMgr {
 
         path.to_str().unwrap().to_string()
     }
-
 }
 
 #[cfg(test)]
@@ -127,7 +144,7 @@ mod tests {
     use anyhow::Result;
     use std::fs;
     use std::fs::File;
-    use std::io::{Write, Read};
+    use std::io::{Read, Write};
 
     fn setup(db_directory: String) -> () {
         // delete db_directory if exists
@@ -145,9 +162,8 @@ mod tests {
 
     #[test]
     pub fn test_file_mgr() -> Result<()> {
-
         let db_directory = "./test_db".to_string();
-        
+
         // test fn new
         {
             setup(db_directory.clone());
@@ -164,20 +180,24 @@ mod tests {
             // check temp* files are deleted
             assert_eq!(fs::metadata(db_directory.clone() + "/temp1").is_ok(), false);
             assert_eq!(fs::metadata(db_directory.clone() + "/temp2").is_ok(), false);
-            assert_eq!(fs::metadata(db_directory.clone() + "/temp3.txt").is_ok(), false);
+            assert_eq!(
+                fs::metadata(db_directory.clone() + "/temp3.txt").is_ok(),
+                false
+            );
             teardown(db_directory.clone());
         }
 
         // test fn read
         {
             setup(db_directory.clone());
-            
+
             let file_mgr = FileMgr::new(db_directory.clone(), 20);
             let mut page = Page::new(20);
 
             // create file
             let mut file = File::create(db_directory.clone() + "/test.txt").unwrap();
-            file.write_all("Hello World!. My Name is hogehoge.".as_bytes()).unwrap();
+            file.write_all("Hello World!. My Name is hogehoge.".as_bytes())
+                .unwrap();
 
             // read block
             let block_id = BlockId::new("test.txt".to_string(), 0);
@@ -190,7 +210,16 @@ mod tests {
                 Err(_) => panic!("Unknown Error"),
             }
 
-            assert_eq!(page.contents().into_vec(), "Hello World!. My Name is hogehoge.".to_string().into_bytes().iter().take(20).cloned().collect::<Vec<u8>>());
+            assert_eq!(
+                page.contents().into_vec(),
+                "Hello World!. My Name is hogehoge."
+                    .to_string()
+                    .into_bytes()
+                    .iter()
+                    .take(20)
+                    .cloned()
+                    .collect::<Vec<u8>>()
+            );
 
             teardown(db_directory.clone());
         }
@@ -201,7 +230,7 @@ mod tests {
 
             let file_mgr = FileMgr::new(db_directory.clone(), 20);
             let mut page = Page::new_log("Hello World!".as_bytes().to_vec());
-            
+
             // create file
             File::create(db_directory.clone() + "/test.txt").unwrap();
 
@@ -232,7 +261,7 @@ mod tests {
             let message = "H".repeat(20);
             let block_size = 30;
             let file_mgr = FileMgr::new(db_directory.clone(), block_size);
-            
+
             // create file
             let mut file = File::create(db_directory.clone() + "/test.txt").unwrap();
             file.write_all(message.as_bytes()).unwrap();
@@ -252,10 +281,15 @@ mod tests {
             let mut file = File::open(db_directory.clone() + "/test.txt").unwrap();
             let mut contents = String::new();
             file.read_to_string(&mut contents).unwrap();
-            let result = message.to_string() + &"\0".repeat((block_size as usize - message.len() % block_size as usize) % block_size as usize + block_size as usize);
+            let result = message.to_string()
+                + &"\0".repeat(
+                    (block_size as usize - message.len() % block_size as usize)
+                        % block_size as usize
+                        + block_size as usize,
+                );
             assert_eq!(contents, result);
 
-            teardown(db_directory.clone()); 
+            teardown(db_directory.clone());
         }
 
         Ok(())
