@@ -1,4 +1,5 @@
 use bytebuffer::ByteBuffer;
+use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::fs::{self, File};
 use std::os::unix::prelude::FileExt;
@@ -12,6 +13,7 @@ pub struct FileMgr {
     db_directory: String,
     block_size: i32,
     is_new: bool,
+    open_files: HashSet<String>,
 }
 
 impl FileMgr {
@@ -41,19 +43,29 @@ impl FileMgr {
             }
         }
 
+        let open_files = HashSet::new();
+
         Self {
             db_directory,
             block_size,
             is_new,
+            open_files,
         }
     }
 
-    pub fn read(&self, blk: &BlockId, p: &mut Page) -> Result<(), FileManagerError> {
-        match OpenOptions::new()
-            .read(true)
-            .open(self.get_path(blk.filename()))
-        {
-            // open file
+    /// Read the contents of the file at the given path and position in the given p.
+    /// Writes contents to the given p.byte_buffer.
+    /// @param blk the block to be read
+    /// @param p the page to be written to
+    pub fn read(&mut self, blk: &BlockId, p: &mut Page) -> Result<(), FileManagerError> {
+        // if blk.filename isn't exist, empty file is created
+        let filename = match self.get_file(blk.filename().clone()) {
+            Ok(filename) => filename,
+            Err(e) => return Err(e),
+        };
+
+        // open file
+        match OpenOptions::new().read(true).open(self.get_path(filename)) {
             Ok(file) => {
                 let offset = (blk.number() * self.block_size) as u64;
                 let mut byte_buffer = p.contents().into_vec();
@@ -70,11 +82,19 @@ impl FileMgr {
         }
     }
 
-    pub fn write(&self, blk: &BlockId, p: &mut Page) -> Result<(), FileManagerError> {
+    /// Write the contents of the given p to the file at the given path and position.
+    /// Writes contents from the given p.byte_buffer.
+    /// @param blk the block to be written
+    /// @param p the page to be written
+    pub fn write(&mut self, blk: &BlockId, p: &mut Page) -> Result<(), FileManagerError> {
+        let filename = match self.get_file(blk.filename().clone()) {
+            Ok(filename) => filename,
+            Err(e) => return Err(e),
+        };
         match OpenOptions::new()
             .write(true)
             .create(true)
-            .open(self.get_path(blk.filename()))
+            .open(self.get_path(filename))
         {
             // open file
             Ok(file) => {
@@ -89,17 +109,23 @@ impl FileMgr {
         }
     }
 
-    pub fn append(&self, filename: String) -> Result<BlockId, FileManagerError> {
+    /// Appends a new block to the end of the specified file with 0 padding.
+    /// @param filename the name of the file
+    pub fn append(&mut self, filename: String) -> Result<BlockId, FileManagerError> {
+        let filename = match self.get_file(filename.clone()) {
+            Ok(filename) => filename,
+            Err(e) => return Err(e),
+        };
         let newblknum = match fs::metadata(self.get_path(filename.clone())) {
             Ok(metadata) => {
                 ((metadata.len() + (self.block_size - 1) as u64) / self.block_size as u64) as i32
             }
             Err(_) => return Err(FileManagerError::FileNotFound),
         };
-        let blk = BlockId::new(filename, newblknum);
+        let blk = BlockId::new(filename.clone(), newblknum);
         match OpenOptions::new()
             .write(true)
-            .open(self.get_path(blk.filename()))
+            .open(self.get_path(filename.clone()))
         {
             Ok(file) => {
                 let offset = (blk.number() * self.block_size) as u64;
@@ -112,8 +138,16 @@ impl FileMgr {
         }
     }
 
-    pub fn length(&self, filename: String) -> Result<i32, FileManagerError> {
-        match fs::metadata(filename) {
+    /// Returns the number of blocks in the specified file.
+    /// If the file does not exist, then a new file is created and returned 0.
+    /// @param filename the name of the file
+    /// @return the number of blocks in the file
+    pub fn length(&mut self, filename: String) -> Result<i32, FileManagerError> {
+        let filename = match self.get_file(filename.clone()) {
+            Ok(filename) => filename,
+            Err(_) => return Err(FileManagerError::FileCreateError),
+        };
+        match fs::metadata(self.get_path(filename.clone())) {
             Ok(metadata) => Ok(
                 ((metadata.len() + (self.block_size - 1) as u64) / self.block_size as u64) as i32
             ),
@@ -129,7 +163,38 @@ impl FileMgr {
         self.block_size
     }
 
-    pub fn get_path(&self, filename: String) -> String {
+    /// Returns the path to the file with the given filename.
+    /// If the file does not exist, then a new file is created.
+    /// @param filename the name of the file
+    fn get_file(&mut self, filename: String) -> Result<String, FileManagerError> {
+        // if file is already open, return filename
+        if self.open_files.contains(&filename) {
+            return Ok(filename);
+        }
+
+        match fs::metadata(self.get_path(filename.clone())) {
+            Ok(_) => {
+                // file exists, but not insert HashMap.
+                self.open_files.insert(filename.clone());
+                return Ok(filename);
+            }
+            Err(_) => {
+                // if file doesn't exist, create file.
+                match File::create(self.get_path(filename.clone())) {
+                    Ok(_) => {
+                        self.open_files.insert(filename.clone());
+                        return Ok(filename);
+                    }
+                    Err(_) => return Err(FileManagerError::FileCreateError),
+                }
+            }
+        }
+    }
+
+    /// Returns the path to the file with the given filename.
+    /// Add directory to filename.
+    /// @param filename the name of the file
+    fn get_path(&self, filename: String) -> String {
         // create path to file
         let mut path = PathBuf::from(self.db_directory.clone());
         path.push(filename);
@@ -191,7 +256,7 @@ mod tests {
         {
             setup(db_directory.clone());
 
-            let file_mgr = FileMgr::new(db_directory.clone(), 20);
+            let mut file_mgr = FileMgr::new(db_directory.clone(), 20);
             let mut page = Page::new(20);
 
             // create file
@@ -228,11 +293,8 @@ mod tests {
         {
             setup(db_directory.clone());
 
-            let file_mgr = FileMgr::new(db_directory.clone(), 20);
+            let mut file_mgr = FileMgr::new(db_directory.clone(), 20);
             let mut page = Page::new_log("Hello World!".as_bytes().to_vec());
-
-            // create file
-            File::create(db_directory.clone() + "/test.txt").unwrap();
 
             // write block
             let block_id = BlockId::new("test.txt".to_string(), 0);
@@ -260,7 +322,7 @@ mod tests {
 
             let message = "H".repeat(20);
             let block_size = 30;
-            let file_mgr = FileMgr::new(db_directory.clone(), block_size);
+            let mut file_mgr = FileMgr::new(db_directory.clone(), block_size);
 
             // create file
             let mut file = File::create(db_directory.clone() + "/test.txt").unwrap();
@@ -288,6 +350,30 @@ mod tests {
                         + block_size as usize,
                 );
             assert_eq!(contents, result);
+
+            teardown(db_directory.clone());
+        }
+
+        // test fn length
+        {
+            setup(db_directory.clone());
+
+            let mut file_mgr = FileMgr::new(db_directory.clone(), 20);
+            let mut page = Page::new_log("H".repeat(30).as_bytes().to_vec());
+
+            // write block
+            let block_id = BlockId::new("test.txt".to_string(), 0);
+            let result = file_mgr.write(&block_id, &mut page);
+            assert!(result.is_ok());
+
+            let length = file_mgr.length("test.txt".to_string());
+            match length {
+                Ok(len) => assert_eq!(len, 2),
+                Err(FileManagerError::FileOpenError) => panic!("FileOpenError"),
+                Err(FileManagerError::FileNotFound) => panic!("FileNotFound"),
+                Err(_) => panic!("Unknown Error"),
+            }
+            assert!(length.is_ok());
 
             teardown(db_directory.clone());
         }
