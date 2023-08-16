@@ -2,9 +2,11 @@ pub mod block_id;
 pub mod file_mgr;
 pub mod page;
 
+#[derive(Debug)]
 pub enum FileManagerError {
     FileOpenError,
     FileNotFound,
+    FileCreateError,
     ReadBlockError(block_id::BlockId),
     WriteBlockError(block_id::BlockId),
     AppendBlockError(block_id::BlockId),
@@ -18,7 +20,7 @@ mod tests {
     pub fn test_file_manager() {
         let path = "./db/filetest";
         let block_size = 400;
-        let fm = FileMgr::new(path.to_string(), block_size);
+        let mut fm = FileMgr::new(path.to_string(), block_size);
         let mut blk = BlockId::new("testfile".to_string(), 0);
 
         let pos1 = 88;
