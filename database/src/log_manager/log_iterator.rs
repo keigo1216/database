@@ -3,7 +3,7 @@ use crate::file_manager::file_mgr::FileMgr;
 use crate::file_manager::page::Page;
 use std::iter::Iterator;
 
-struct LogIterator {
+pub struct LogIterator {
     fm: FileMgr,
     blk: BlockId,
     p: Page,
@@ -43,6 +43,7 @@ impl LogIterator {
         }
     }
 
+    #[allow(dead_code)]
     pub fn has_next(&mut self) -> bool {
         self.current_pos < self.fm.block_size() || self.blk.number() > 0
     }
@@ -53,5 +54,48 @@ impl LogIterator {
             .expect("Error reading block");
         self.boundary = self.p.get_int(0).expect("Error reading boundary");
         self.current_pos = self.boundary;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+
+    use crate::file_manager::block_id::BlockId;
+    use crate::file_manager::file_mgr::FileMgr;
+    use crate::file_manager::page::Page;
+    use std::fs;
+
+    #[test]
+    fn test_log_iterator() -> Result<()> {
+        // setup file manager
+        let db_directory = "./db/logtest";
+
+        // delete ./db/logtest
+        if fs::metadata(db_directory.clone()).is_ok() {
+            fs::remove_dir_all(db_directory.clone()).unwrap();
+        }
+
+        let mut fm = FileMgr::new(db_directory.to_string(), 20);
+        let blk = BlockId::new("testfile".to_string(), 0);
+        let mut p = Page::new(fm.block_size());
+        p.set_int(0, 16);
+        fm.write(&blk, &mut p).expect("Error writing block on Test");
+
+        // test new
+        {
+            let mut log_iter = LogIterator::new(fm.clone(), blk.clone());
+            assert_eq!(log_iter.current_pos, 16);
+            assert_eq!(log_iter.boundary, 16);
+            assert_eq!(log_iter.p.get_bytes(0).unwrap(), vec![0; 16]);
+        }
+
+        // delete ./db/logtest
+        if fs::metadata(db_directory.clone()).is_ok() {
+            fs::remove_dir_all(db_directory.clone()).unwrap();
+        }
+
+        Ok(())
     }
 }

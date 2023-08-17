@@ -2,7 +2,7 @@ use bytebuffer::ByteBuffer;
 use std::mem;
 
 pub struct Page {
-    bb: ByteBuffer,
+    pub(crate) bb: ByteBuffer,
     // charset?
 }
 
@@ -80,7 +80,7 @@ impl Page {
         self.set_bytes(offset, b);
     }
 
-    pub fn max_length(&self, strlen: i32) -> i32 {
+    pub fn max_length(strlen: i32) -> i32 {
         // represents every UTF-8 character by 1 byte
         mem::size_of::<i32>() as i32 + strlen
     }

@@ -2,6 +2,7 @@ use crate::file_manager::block_id::BlockId;
 use crate::file_manager::file_mgr::FileMgr;
 use crate::file_manager::page::Page;
 use crate::file_manager::FileManagerError;
+use crate::log_manager::log_iterator::LogIterator;
 
 pub struct LogMgr {
     fm: FileMgr,
@@ -84,6 +85,13 @@ impl LogMgr {
         }
     }
 
+
+    /// flush all log records to disk and return iterator to read log records
+    pub fn iterator(&mut self) -> LogIterator {
+        self.flush_page();
+        LogIterator::new(self.fm.clone(), self.current_blk.clone())
+    }
+
     fn append_new_block(
         fm: &mut FileMgr,
         log_file: &String,
@@ -108,5 +116,92 @@ impl LogMgr {
             .write(&self.current_blk, &mut self.log_page)
             .unwrap();
         self.last_saved_lsn = self.latest_lsn;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+
+    use crate::file_manager::file_mgr::FileMgr;
+    use crate::log_manager::log_mgr::LogMgr;
+    use std::fs::{self, File, OpenOptions};
+    use std::io::Write;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_log_mgr() -> Result<()> {
+        let db_directory = "./db/logtest".to_string();
+        let log_file = "testfile".to_string();
+        // delete ./db/logtest
+        if fs::metadata(db_directory.clone()).is_ok() {
+            fs::remove_dir_all(db_directory.clone()).unwrap();
+        }
+
+        // test new 
+        {
+            let mut fm = FileMgr::new(db_directory.to_string(), 20);
+            // log_size == 0
+            let log_mgr = LogMgr::new(fm.clone(), log_file.clone()).unwrap();
+            assert_eq!(log_mgr.current_blk, BlockId::new(log_file.clone(), 0));
+            assert_eq!(log_mgr.latest_lsn, 0);
+            assert_eq!(log_mgr.last_saved_lsn, 0);
+
+            // check set block size
+            let mut p = Page::new(fm.block_size());
+            fm.read(&log_mgr.current_blk, &mut p).expect("test_log_mgr: read error");
+            assert_eq!(p.get_int(0).unwrap(), fm.block_size());
+        }
+
+        // test new
+        {
+            let fm = FileMgr::new(db_directory.to_string(), 20);
+            // log_size == 2
+            let mut path = PathBuf::from(db_directory.clone());
+            path.push(log_file.clone());
+            File::create(path.clone()).unwrap(); // create file
+            let mut file = OpenOptions::new().write(true).read(true).open(path.clone()).unwrap();
+            file.write_all(&vec![0; 40]).unwrap();
+
+            let log_mgr = LogMgr::new(fm.clone(), log_file.clone()).unwrap();
+            assert_eq!(log_mgr.current_blk, BlockId::new(log_file.clone(), 1));
+
+            // delete file
+            fs::remove_file(path.clone()).unwrap();
+        }
+
+        // test append
+        {
+            let fm = FileMgr::new(db_directory.to_string(), 20);
+            let mut log_mgr = LogMgr::new(fm.clone(), log_file.clone()).unwrap();
+            let logrec = vec![1, 2, 3, 4];
+            let lsn = log_mgr.append(logrec.clone());
+            assert_eq!(lsn, 1);
+            assert_eq!(log_mgr.latest_lsn, 1);
+            assert_eq!(log_mgr.last_saved_lsn, 0);
+
+            // check log page
+            assert_eq!(log_mgr.log_page.get_int(0).unwrap(), fm.block_size() - 8);
+            assert_eq!(log_mgr.log_page.get_bytes(fm.block_size() - 8).unwrap(), vec![1, 2, 3, 4]);
+        }
+
+        // test append (not enough space in current block)
+        {
+            let fm = FileMgr::new(db_directory.to_string(), 20);
+            let mut log_mgr = LogMgr::new(fm.clone(), log_file.clone()).unwrap();
+            let logrec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+            log_mgr.append(logrec.clone());
+            let lsn = log_mgr.append(logrec.clone());
+            assert_eq!(lsn, 2);
+            assert_eq!(log_mgr.latest_lsn, 2);
+            assert_eq!(log_mgr.last_saved_lsn, 1);
+
+            // check log page
+            assert_eq!(log_mgr.log_page.get_int(0).unwrap(), fm.block_size() - 13);
+            assert_eq!(log_mgr.log_page.get_bytes(fm.block_size() - 13).unwrap(), vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        }
+
+        Ok(())
     }
 }
