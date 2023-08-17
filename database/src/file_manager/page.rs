@@ -38,6 +38,11 @@ impl Page {
         self.bb.write_i32(n) // move wpos from offset to offset + 4
     }
 
+    /// Read a byte sequence of the length specified by the first 4 bytes (from offset to offset + 4).
+    /// algorithm:
+    /// 1. set rpos to offset
+    /// 2. read i32 (named l) from rpos
+    /// 3. read bytes from rpos + 4 to rpos + 4 + l
     pub fn get_bytes(&mut self, offset: i32) -> Result<Vec<u8>, std::io::Error> {
         self.bb.set_rpos(offset as usize);
         let length = self.bb.read_i32(); // to do: error handling
@@ -47,6 +52,11 @@ impl Page {
         }
     }
 
+    /// Write a byte sequence of the length specified by the first 4 bytes (from offset to offset + 4).
+    /// algorithm:
+    /// 1. set wpos to offset
+    /// 2. write i32 (named l) to wpos
+    /// 3. write bytes from wpos + 4 to wpos + 4 + l
     pub fn set_bytes(&mut self, offset: i32, b: Vec<u8>) -> () {
         self.bb.set_wpos(offset as usize);
         self.bb.write_i32(b.len() as i32);
