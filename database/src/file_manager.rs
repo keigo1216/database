@@ -27,7 +27,7 @@ mod tests {
         let mut p1 = Page::new(fm.block_size());
         p1.set_string(pos1, "abcdefghijklm".to_string());
 
-        let size = p1.max_length("abcdefghijklm".len() as i32);
+        let size = Page::max_length("abcdefghijklm".len() as i32);
         let pos2 = pos1 + size;
         p1.set_int(pos2, 345);
 

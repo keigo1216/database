@@ -9,6 +9,7 @@ use crate::file_manager::block_id::BlockId;
 use crate::file_manager::page::Page;
 use crate::file_manager::FileManagerError;
 
+#[derive(Debug, Clone)]
 pub struct FileMgr {
     db_directory: String,
     block_size: i32,
