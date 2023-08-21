@@ -89,9 +89,21 @@ mod tests {
         buff[2] = None;
         buff[5] = Some(bm.pin(BlockId::new("testfile".to_string(), 3)));
 
-        assert_eq!(buff[0].clone().unwrap().lock().unwrap().block().unwrap(), BlockId::new("testfile".to_string(), 0));
-        assert_eq!(buff[3].clone().unwrap().lock().unwrap().block().unwrap(), BlockId::new("testfile".to_string(), 0));
-        assert_eq!(buff[4].clone().unwrap().lock().unwrap().block().unwrap(), BlockId::new("testfile".to_string(), 1));
-        assert_eq!(buff[5].clone().unwrap().lock().unwrap().block().unwrap(), BlockId::new("testfile".to_string(), 3));
+        assert_eq!(
+            buff[0].clone().unwrap().lock().unwrap().block().unwrap(),
+            BlockId::new("testfile".to_string(), 0)
+        );
+        assert_eq!(
+            buff[3].clone().unwrap().lock().unwrap().block().unwrap(),
+            BlockId::new("testfile".to_string(), 0)
+        );
+        assert_eq!(
+            buff[4].clone().unwrap().lock().unwrap().block().unwrap(),
+            BlockId::new("testfile".to_string(), 1)
+        );
+        assert_eq!(
+            buff[5].clone().unwrap().lock().unwrap().block().unwrap(),
+            BlockId::new("testfile".to_string(), 3)
+        );
     }
 }

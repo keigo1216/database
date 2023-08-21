@@ -3,8 +3,8 @@ use crate::file_manager::block_id::BlockId;
 use crate::file_manager::file_mgr::FileMgr;
 use crate::log_manager::log_mgr::LogMgr;
 use std::sync::{Arc, Mutex};
-use std::time;
 use std::thread;
+use std::time;
 
 mod constants {
     pub const MAX_TIME: i64 = 10000;
@@ -141,7 +141,7 @@ impl BufferMgr {
     }
 
     pub fn print_pin(&self) {
-        for(i, buffer) in self.buffer_pool.iter().enumerate() {
+        for (i, buffer) in self.buffer_pool.iter().enumerate() {
             let buf = buffer.lock().unwrap();
             println!("buffer {} is pinned: {}", i, buf.pins);
         }
