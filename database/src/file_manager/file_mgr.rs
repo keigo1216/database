@@ -91,7 +91,13 @@ impl FileMgr {
         file.seek(std::io::SeekFrom::Start(offset)).unwrap();
         let mut buf_reader = BufReader::with_capacity(self.block_size as usize, file);
         let byte_array = buf_reader.fill_buf().unwrap();
-        p.set_byte_buffer(ByteBuffer::from_vec(byte_array.to_vec()));
+        let mut byte_vec = byte_array.to_vec();
+        // 0 padding to fill the block
+        let padding = self.block_size - byte_vec.len() as i32;
+        for _ in 0..padding {
+            byte_vec.push(0);
+        }
+        p.set_byte_buffer(ByteBuffer::from_vec(byte_vec));
         Ok(())
     }
 

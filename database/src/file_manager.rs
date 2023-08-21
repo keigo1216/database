@@ -29,7 +29,7 @@ mod tests {
         let path = "./db/filetest";
         let block_size = 400;
         let mut fm = FileMgr::new(path.to_string(), block_size);
-        let mut blk = BlockId::new("testfile".to_string(), 0);
+        let mut blk = BlockId::new("testfile".to_string(), 2);
 
         let pos1 = 88;
         let mut p1 = Page::new(fm.block_size());

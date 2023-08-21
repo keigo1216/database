@@ -4,6 +4,7 @@ use crate::file_manager::page::Page;
 use crate::file_manager::FileManagerError;
 use crate::log_manager::log_iterator::LogIterator;
 
+#[derive(Clone)]
 pub struct LogMgr {
     fm: FileMgr,
     log_file: String,
