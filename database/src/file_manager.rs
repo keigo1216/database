@@ -48,6 +48,6 @@ mod tests {
         assert_eq!(p2.get_string(pos1).unwrap(), "abcdefghijklm");
         assert_eq!(p2.get_int(pos2).unwrap(), 345);
 
-        teardown(path.to_string());
+        teardown("./db".to_string());
     }
 }

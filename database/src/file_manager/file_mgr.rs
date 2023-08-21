@@ -27,7 +27,7 @@ impl FileMgr {
 
         // create directory if not exists
         if is_new {
-            fs::create_dir(db_directory.clone()).unwrap();
+            fs::create_dir_all(db_directory.clone()).unwrap();
         }
 
         // remove any leftover temporary tables
