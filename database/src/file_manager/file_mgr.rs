@@ -1,16 +1,14 @@
-use std::io::BufReader;
-use std::io::BufRead;
-use std::io::Seek;
-use bytebuffer::ByteBuffer;
-use std::collections::HashSet;
-use std::fs::OpenOptions;
-use std::fs::{self, File};
-use std::os::unix::prelude::FileExt;
-use std::path::PathBuf;
-
 use crate::file_manager::block_id::BlockId;
 use crate::file_manager::page::Page;
 use crate::file_manager::FileManagerError;
+use bytebuffer::ByteBuffer;
+use std::collections::HashSet;
+use std::fs::{self, OpenOptions};
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Seek;
+use std::os::unix::prelude::FileExt;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct FileMgr {
@@ -62,24 +60,39 @@ impl FileMgr {
     /// @param blk the block to be read
     /// @param p the page to be written to
     pub fn read(&mut self, blk: &BlockId, p: &mut Page) -> Result<(), FileManagerError> {
-        // if blk.filename isn't exist, empty file is created
-        let filename = match self.get_file(blk.filename().clone()) {
-            Ok(filename) => filename,
-            Err(e) => return Err(e),
+        // if blk.filename() is already in open_files, then we don't need to create again
+        let filename = self.get_file(blk.filename().clone());
+        let mut file = match filename {
+            Some(f) => {
+                // file already exists
+                match OpenOptions::new().read(true).open(self.get_path(f)) {
+                    Ok(file) => file,
+                    Err(e) => panic!("file_mgr.rs: read: {:?}", e),
+                }
+            }
+            None => {
+                // file does not exist
+                match OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(self.get_path(blk.filename().clone()))
+                {
+                    Ok(file) => {
+                        self.open_files.insert(blk.filename().clone());
+                        file
+                    }
+                    Err(e) => panic!("file_mgr.rs: read: {:?}", e),
+                }
+            }
         };
 
-        // open file
-        match OpenOptions::new().read(true).open(self.get_path(filename)) {
-            Ok(mut file) => {
-                let offset = (blk.number() * self.block_size) as u64;
-                file.seek(std::io::SeekFrom::Start(offset)).unwrap();
-                let mut buf_reader = BufReader::with_capacity(self.block_size as usize, file);
-                let byte_array = buf_reader.fill_buf().unwrap();
-                p.set_byte_buffer(ByteBuffer::from_vec(byte_array.to_vec()));
-                Ok(())
-            }
-            Err(_) => Err(FileManagerError::FileOpenError),
-        }
+        let offset = (blk.number() * self.block_size) as u64;
+        file.seek(std::io::SeekFrom::Start(offset)).unwrap();
+        let mut buf_reader = BufReader::with_capacity(self.block_size as usize, file);
+        let byte_array = buf_reader.fill_buf().unwrap();
+        p.set_byte_buffer(ByteBuffer::from_vec(byte_array.to_vec()));
+        Ok(())
     }
 
     /// Write the contents of the given p to the file at the given path and position.
@@ -87,34 +100,67 @@ impl FileMgr {
     /// @param blk the block to be written
     /// @param p the page to be written
     pub fn write(&mut self, blk: &BlockId, p: &mut Page) -> Result<(), FileManagerError> {
-        let filename = match self.get_file(blk.filename().clone()) {
-            Ok(filename) => filename,
-            Err(e) => return Err(e),
-        };
-        match OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(self.get_path(filename))
-        {
-            // open file
-            Ok(file) => {
-                let offset = (blk.number() * self.block_size) as u64;
-                match file.write_all_at(&mut p.contents().into_vec(), offset) {
-                    // write to file
-                    Ok(_) => Ok(()),
-                    Err(_) => Err(FileManagerError::WriteBlockError(blk.clone())),
+        // if blk.filename() is already in open_files, then we don't need to create again
+        let filename = self.get_file(blk.filename().clone());
+        let mut file = match filename {
+            Some(f) => {
+                // file already exists
+                match OpenOptions::new().write(true).open(self.get_path(f)) {
+                    Ok(file) => file,
+                    Err(e) => panic!("file_mgr.rs: read: {:?}", e),
                 }
             }
-            Err(_) => Err(FileManagerError::FileOpenError),
-        }
+            None => {
+                // file does not exist
+                match OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .open(self.get_path(blk.filename().clone()))
+                {
+                    Ok(file) => {
+                        self.open_files.insert(blk.filename().clone());
+                        file
+                    }
+                    Err(e) => panic!("file_mgr.rs: read: {:?}", e),
+                }
+            }
+        };
+
+        let offset = (blk.number() * self.block_size) as u64;
+        file.seek(std::io::SeekFrom::Start(offset)).unwrap();
+        file.write_all_at(&mut p.contents().into_vec(), offset)
+            .unwrap();
+        Ok(())
     }
 
     /// Appends a new block to the end of the specified file with 0 padding.
     /// @param filename the name of the file
     pub fn append(&mut self, filename: String) -> Result<BlockId, FileManagerError> {
-        let filename = match self.get_file(filename.clone()) {
-            Ok(filename) => filename,
-            Err(e) => return Err(e),
+        match self.get_file(filename.clone()) {
+            Some(f) => {
+                match OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(self.get_path(f))
+                {
+                    Ok(file) => file,
+                    Err(e) => panic!("file_mgr.rs: append: {:?}", e),
+                }
+            }
+            None => {
+                match OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(self.get_path(filename.clone()))
+                {
+                    Ok(file) => {
+                        self.open_files.insert(filename.clone());
+                        file
+                    }
+                    Err(e) => panic!("file_mgr.rs: append: {:?}", e),
+                }
+            }
         };
         let newblknum = match fs::metadata(self.get_path(filename.clone())) {
             Ok(metadata) => {
@@ -143,14 +189,24 @@ impl FileMgr {
     /// @param filename the name of the file
     /// @return the number of blocks in the file
     pub fn length(&mut self, filename: String) -> Result<i32, FileManagerError> {
-        let filename = match self.get_file(filename.clone()) {
-            Ok(filename) => filename,
-            Err(_) => return Err(FileManagerError::FileCreateError),
+        match self.get_file(filename.clone()) {
+            Some(_) => {}
+            None => {
+                match OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(self.get_path(filename.clone()))
+                {
+                    Ok(_) => {
+                        self.open_files.insert(filename.clone());
+                    }
+                    Err(e) => panic!("file_mgr.rs: length: {:?}", e),
+                }
+            }
         };
         match fs::metadata(self.get_path(filename.clone())) {
-            Ok(metadata) => Ok(
-                ((metadata.len() + (self.block_size - 1) as u64) / self.block_size as u64) as i32
-            ),
+            Ok(metadata) => Ok((metadata.len() as f64 / self.block_size as f64).ceil() as i32),
             Err(_) => Err(FileManagerError::FileNotFound),
         }
     }
@@ -164,30 +220,14 @@ impl FileMgr {
     }
 
     /// Returns the path to the file with the given filename.
-    /// If the file does not exist, then a new file is created.
+    /// If the file does not exist, return None.
     /// @param filename the name of the file
-    fn get_file(&mut self, filename: String) -> Result<String, FileManagerError> {
+    fn get_file(&mut self, filename: String) -> Option<String> {
         // if file is already open, return filename
         if self.open_files.contains(&filename) {
-            return Ok(filename);
-        }
-
-        match fs::metadata(self.get_path(filename.clone())) {
-            Ok(_) => {
-                // file exists, but not insert HashMap.
-                self.open_files.insert(filename.clone());
-                return Ok(filename);
-            }
-            Err(_) => {
-                // if file doesn't exist, create file.
-                match File::create(self.get_path(filename.clone())) {
-                    Ok(_) => {
-                        self.open_files.insert(filename.clone());
-                        return Ok(filename);
-                    }
-                    Err(_) => return Err(FileManagerError::FileCreateError),
-                }
-            }
+            return Some(filename);
+        } else {
+            return None;
         }
     }
 
