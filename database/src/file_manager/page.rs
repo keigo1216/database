@@ -1,6 +1,7 @@
 use bytebuffer::ByteBuffer;
 use std::mem;
 
+#[derive(Clone)]
 pub struct Page {
     pub(crate) bb: ByteBuffer,
     // charset?
