@@ -1,3 +1,6 @@
+use std::io::BufReader;
+use std::io::BufRead;
+use std::io::Seek;
 use bytebuffer::ByteBuffer;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
@@ -67,17 +70,13 @@ impl FileMgr {
 
         // open file
         match OpenOptions::new().read(true).open(self.get_path(filename)) {
-            Ok(file) => {
+            Ok(mut file) => {
                 let offset = (blk.number() * self.block_size) as u64;
-                let mut byte_buffer = p.contents().into_vec();
-                match file.read_exact_at(&mut byte_buffer, offset) {
-                    // read block
-                    Ok(_) => {
-                        p.set_byte_buffer(ByteBuffer::from_vec(byte_buffer));
-                        Ok(())
-                    }
-                    Err(_) => Err(FileManagerError::ReadBlockError(blk.clone())),
-                }
+                file.seek(std::io::SeekFrom::Start(offset)).unwrap();
+                let mut buf_reader = BufReader::with_capacity(self.block_size as usize, file);
+                let byte_array = buf_reader.fill_buf().unwrap();
+                p.set_byte_buffer(ByteBuffer::from_vec(byte_array.to_vec()));
+                Ok(())
             }
             Err(_) => Err(FileManagerError::FileOpenError),
         }
