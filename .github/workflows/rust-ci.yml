@@ -4,8 +4,9 @@ on: [push, pull_request]
 
 jobs: 
   check:
-    name: Check
+    name: test
     runs-on: ubuntu-latest
+    working-directory: ./database
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@master
@@ -13,28 +14,9 @@ jobs:
           toolchain: stable
           profile: minimal
           components: rustfmt
-      - run: cargo check
-    
-  fmt:
-    name: Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          profile: minimal
-          components: rustfmt
-      - run: cargo fmt -- --check
-  
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          profile: minimal
-          components: rustfmt
-      - run: cargo test --all -- --test-threads=1
+      - name: check
+        run: cargo check
+      - name: fmt
+        run: cargo fmt -- --check
+      - name: test
+        run: cargo test --all -- --test-threads=1
