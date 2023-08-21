@@ -15,6 +15,14 @@ pub enum FileManagerError {
 #[cfg(test)]
 mod tests {
     use super::{block_id::BlockId, file_mgr::FileMgr, page::Page};
+    use std::fs;
+
+    fn teardown(path: String) {
+        // delete path
+        if fs::metadata(path.clone()).is_ok() {
+            fs::remove_dir_all(path.clone()).unwrap();
+        }
+    }
 
     #[test]
     pub fn test_file_manager() {
@@ -39,5 +47,7 @@ mod tests {
 
         assert_eq!(p2.get_string(pos1).unwrap(), "abcdefghijklm");
         assert_eq!(p2.get_int(pos2).unwrap(), 345);
+
+        teardown(path.to_string());
     }
 }

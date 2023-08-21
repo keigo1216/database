@@ -65,8 +65,11 @@ impl LogMgr {
         if boundary - bytes_needed < std::mem::size_of::<i32>() as i32 {
             // if not enough space in current block
             self.flush_page();
-            self.current_blk = Self::append_new_block(&mut self.fm, &self.log_file, &mut self.log_page)
-                .expect("append new block error"); // create new block (appended block size to top of block) and set as current block
+            // create new block (appended block size to top of block) and set as current block
+            // log_page isn't 0 padding, but, it's ok because append_new_block will reset the cursor and will overwrite this page
+            self.current_blk =
+                Self::append_new_block(&mut self.fm, &self.log_file, &mut self.log_page)
+                    .expect("append new block error"); // create new block (appended block size to top of block) and set as current block
             boundary = self.log_page.get_int(0).expect("io Error"); // get remaining space in current block
         }
 
@@ -84,7 +87,6 @@ impl LogMgr {
             self.flush_page();
         }
     }
-
 
     /// flush all log records to disk and return iterator to read log records
     pub fn iterator(&mut self) -> LogIterator {
@@ -129,17 +131,27 @@ mod tests {
     use std::fs::{self, File, OpenOptions};
     use std::io::Write;
     use std::path::PathBuf;
+    use std::vec;
+
+    fn teardown(db_directory: String) {
+        // delete ./db/logtest
+        if fs::metadata(db_directory.clone()).is_ok() {
+            fs::remove_dir_all(db_directory.clone()).unwrap();
+        }
+    }
 
     #[test]
     fn test_log_mgr() -> Result<()> {
         let db_directory = "./db/logtest".to_string();
         let log_file = "testfile".to_string();
+        let mut path = PathBuf::from(db_directory.clone());
+        path.push(log_file.clone());
         // delete ./db/logtest
         if fs::metadata(db_directory.clone()).is_ok() {
             fs::remove_dir_all(db_directory.clone()).unwrap();
         }
 
-        // test new 
+        // test new
         {
             let mut fm = FileMgr::new(db_directory.to_string(), 20);
             // log_size == 0
@@ -150,30 +162,14 @@ mod tests {
 
             // check set block size
             let mut p = Page::new(fm.block_size());
-            fm.read(&log_mgr.current_blk, &mut p).expect("test_log_mgr: read error");
+            fm.read(&log_mgr.current_blk, &mut p)
+                .expect("test_log_mgr: read error");
             assert_eq!(p.get_int(0).unwrap(), fm.block_size());
-        }
-
-        // test new
-        {
-            let fm = FileMgr::new(db_directory.to_string(), 20);
-            // log_size == 2
-            let mut path = PathBuf::from(db_directory.clone());
-            path.push(log_file.clone());
-            File::create(path.clone()).unwrap(); // create file
-            let mut file = OpenOptions::new().write(true).read(true).open(path.clone()).unwrap();
-            file.write_all(&vec![0; 40]).unwrap();
-
-            let log_mgr = LogMgr::new(fm.clone(), log_file.clone()).unwrap();
-            assert_eq!(log_mgr.current_blk, BlockId::new(log_file.clone(), 1));
-
-            // delete file
-            fs::remove_file(path.clone()).unwrap();
         }
 
         // test append
         {
-            let fm = FileMgr::new(db_directory.to_string(), 20);
+            let mut fm = FileMgr::new(db_directory.to_string(), 20);
             let mut log_mgr = LogMgr::new(fm.clone(), log_file.clone()).unwrap();
             let logrec = vec![1, 2, 3, 4];
             let lsn = log_mgr.append(logrec.clone());
@@ -183,24 +179,72 @@ mod tests {
 
             // check log page
             assert_eq!(log_mgr.log_page.get_int(0).unwrap(), fm.block_size() - 8);
-            assert_eq!(log_mgr.log_page.get_bytes(fm.block_size() - 8).unwrap(), vec![1, 2, 3, 4]);
+            assert_eq!(
+                log_mgr.log_page.get_bytes(fm.block_size() - 8).unwrap(),
+                vec![1, 2, 3, 4]
+            );
+
+            // check log file
+            log_mgr.flush(lsn);
+            let mut p = Page::new(fm.block_size());
+            let blk = BlockId::new(log_file.clone(), 0);
+            fm.read(&blk, &mut p).unwrap();
+            let len = p.get_int(0).unwrap();
+            assert_eq!(p.get_bytes(len).unwrap(), vec![1, 2, 3, 4]);
         }
 
         // test append (not enough space in current block)
         {
-            let fm = FileMgr::new(db_directory.to_string(), 20);
+            let mut fm = FileMgr::new(db_directory.to_string(), 20);
             let mut log_mgr = LogMgr::new(fm.clone(), log_file.clone()).unwrap();
             let logrec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
-            log_mgr.append(logrec.clone());
+            // log_mgr.append(logrec.clone());
             let lsn = log_mgr.append(logrec.clone());
-            assert_eq!(lsn, 2);
-            assert_eq!(log_mgr.latest_lsn, 2);
-            assert_eq!(log_mgr.last_saved_lsn, 1);
+            assert_eq!(lsn, 1);
+            assert_eq!(log_mgr.latest_lsn, 1);
+            assert_eq!(log_mgr.last_saved_lsn, 0);
+            // check flush page at block 0
+            let mut p = Page::new(fm.block_size());
+            let blk = BlockId::new(log_file.clone(), 0);
+            fm.read(&blk, &mut p).unwrap();
+            let len = p.get_int(0).unwrap();
+            assert_eq!(p.get_bytes(len).unwrap(), vec![1, 2, 3, 4]);
 
             // check log page
             assert_eq!(log_mgr.log_page.get_int(0).unwrap(), fm.block_size() - 13);
-            assert_eq!(log_mgr.log_page.get_bytes(fm.block_size() - 13).unwrap(), vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            assert_eq!(
+                log_mgr.log_page.get_bytes(fm.block_size() - 13).unwrap(),
+                vec![1, 2, 3, 4, 5, 6, 7, 8, 9]
+            );
+
+            // flush page and check log file
+            log_mgr.flush(lsn);
+            let mut p = Page::new(fm.block_size());
+            let blk = BlockId::new(log_file.clone(), 1);
+            fm.read(&blk, &mut p).unwrap();
+            let len = p.get_int(0).unwrap();
+            assert_eq!(p.get_bytes(len).unwrap(), vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
         }
+
+        // test new (already exist block)
+        {
+            let fm = FileMgr::new(db_directory.to_string(), 20);
+            // log_size == 2
+            let mut path = PathBuf::from(db_directory.clone());
+            path.push(log_file.clone());
+            File::create(path.clone()).unwrap(); // create file
+            let mut file = OpenOptions::new()
+                .write(true)
+                .read(true)
+                .open(path.clone())
+                .unwrap();
+            file.write_all(&vec![0; 40]).unwrap();
+
+            let log_mgr = LogMgr::new(fm.clone(), log_file.clone()).unwrap();
+            assert_eq!(log_mgr.current_blk, BlockId::new(log_file.clone(), 1));
+        }
+
+        teardown(db_directory.clone());
 
         Ok(())
     }
