@@ -244,7 +244,7 @@ mod tests {
             assert_eq!(log_mgr.current_blk, BlockId::new(log_file.clone(), 1));
         }
 
-        teardown(db_directory.clone());
+        teardown("./db".to_string());
 
         Ok(())
     }

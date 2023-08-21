@@ -1,0 +1,24 @@
+name: Rust Test
+
+on: [push, pull_request]
+
+jobs: 
+  check:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          profile: minimal
+          components: rustfmt
+      - name: check
+        run: cargo check
+        working-directory: ./database
+      - name: fmt
+        run: cargo fmt -- --check
+        working-directory: ./database
+      - name: test
+        run: cargo test --all -- --test-threads=1
+        working-directory: ./database
