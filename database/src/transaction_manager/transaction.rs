@@ -355,7 +355,6 @@ mod test {
             let n = p.get_int(80).unwrap();
             assert_eq!(n, 124); // new value
 
-
             // Test log content
             let mut p = Page::new(fm.block_size());
             let blk = BlockId::new("testfile".to_string(), 0);
@@ -374,7 +373,10 @@ mod test {
             // value is old value, not new value
             assert_eq!(
                 set_string_log,
-                vec![0, 0, 0, 5, 0, 0, 0, 2, 0, 0, 0, 8, 116, 101, 115, 116, 102, 105, 108, 101, 0, 0, 0, 1, 0, 0, 0, 40, 0, 0, 0, 3, 111, 110, 101]
+                vec![
+                    0, 0, 0, 5, 0, 0, 0, 2, 0, 0, 0, 8, 116, 101, 115, 116, 102, 105, 108, 101, 0,
+                    0, 0, 1, 0, 0, 0, 40, 0, 0, 0, 3, 111, 110, 101
+                ]
             );
 
             // check set_int log
@@ -384,7 +386,10 @@ mod test {
             // value is old value, not new value
             assert_eq!(
                 set_int_log,
-                vec![0, 0, 0, 4, 0, 0, 0, 2, 0, 0, 0, 8, 116, 101, 115, 116, 102, 105, 108, 101, 0, 0, 0, 1, 0, 0, 0, 80, 0, 0, 0, 123]
+                vec![
+                    0, 0, 0, 4, 0, 0, 0, 2, 0, 0, 0, 8, 116, 101, 115, 116, 102, 105, 108, 101, 0,
+                    0, 0, 1, 0, 0, 0, 80, 0, 0, 0, 123
+                ]
             );
 
             // check start log
@@ -430,7 +435,10 @@ mod test {
             // value is new value, not old value
             assert_eq!(
                 set_int_log,
-                vec![0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 0, 8, 116, 101, 115, 116, 102, 105, 108, 101, 0, 0, 0, 1, 0, 0, 0, 80, 0, 0, 0, 124]
+                vec![
+                    0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 0, 8, 116, 101, 115, 116, 102, 105, 108, 101, 0,
+                    0, 0, 1, 0, 0, 0, 80, 0, 0, 0, 124
+                ]
             );
 
             // check start log
