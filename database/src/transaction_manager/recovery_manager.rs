@@ -87,6 +87,7 @@ impl RecoveryMgr {
     }
 
     pub fn set_int(&self, buff: &mut Buffer, offset: i32, _new_val: i32) -> i32 {
+        println!("buff: {:?}, offset: {:?}", buff.contents(), offset);
         let old_val = buff.contents().get_int(offset).unwrap();
         let blk = buff.block().unwrap();
         {

@@ -187,6 +187,7 @@ impl Transaction {
                 {
                     // lock the buffer
                     let mut b_ = b.lock().unwrap();
+                    println!("offset: {}", offset);
                     if ok_to_log {
                         lsn = self.recovery_mgr.set_int(&mut b_, offset, val);
                     }
