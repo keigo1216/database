@@ -47,3 +47,13 @@ impl ConcurrencyMgr {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+
+    #[test]
+    fn test_concurrency_mgr() -> Result<()> {
+        Ok(())
+    }
+}

@@ -275,12 +275,12 @@ mod test {
         }
     }
 
-    // fn teardown(db_directory: String) {
-    //     // delete db_directory if exists
-    //     if fs::metadata(db_directory.clone()).is_ok() {
-    //         fs::remove_dir_all(db_directory.clone()).unwrap();
-    //     }
-    // }
+    fn teardown(db_directory: String) {
+        // delete db_directory if exists
+        if fs::metadata(db_directory.clone()).is_ok() {
+            fs::remove_dir_all(db_directory.clone()).unwrap();
+        }
+    }
 
     #[test]
     fn test_transaction() -> Result<()> {
@@ -459,7 +459,7 @@ mod test {
             assert_eq!(ival, 124);
         }
 
-        // teardown(db_directory.clone());
+        teardown(db_directory.clone());
         Ok(())
     }
 }

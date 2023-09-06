@@ -86,3 +86,39 @@ impl LockTable {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+
+    #[test]
+    fn test_lock_table() -> Result<()> {
+        let mut lock_table = LockTable::new();
+        let blk = BlockId::new("testfile".to_string(), 1);
+
+        // Test slock
+        {
+            lock_table.slock(blk.clone());
+            assert_eq!(lock_table.get_lock_val(&blk), 1);
+            lock_table.slock(blk.clone());
+            assert_eq!(lock_table.get_lock_val(&blk), 2);
+        }
+
+        // Test unlock
+        {
+            lock_table.unlock(blk.clone());
+            assert_eq!(lock_table.get_lock_val(&blk), 1);
+            lock_table.unlock(blk.clone());
+            assert_eq!(lock_table.get_lock_val(&blk), 0);
+        }
+
+        // Test xlock
+        {
+            lock_table.xlock(blk.clone());
+            assert_eq!(lock_table.get_lock_val(&blk), -1);
+        }
+
+        Ok(())
+    }
+}
