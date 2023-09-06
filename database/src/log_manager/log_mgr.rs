@@ -8,7 +8,7 @@ use crate::log_manager::log_iterator::LogIterator;
 pub struct LogMgr {
     fm: FileMgr,
     log_file: String,
-    log_page: Page,
+    pub log_page: Page,
     current_blk: BlockId,
     latest_lsn: i32,
     last_saved_lsn: i32,

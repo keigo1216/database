@@ -1,7 +1,9 @@
 use bytebuffer::ByteBuffer;
 use std::mem;
 
-#[derive(Clone)]
+use crate::common::integer;
+
+#[derive(Clone, Debug)]
 pub struct Page {
     pub(crate) bb: ByteBuffer,
     // charset?
@@ -30,11 +32,20 @@ impl Page {
     }
 
     pub fn get_int(&mut self, offset: i32) -> Result<i32, std::io::Error> {
+        // padding 0 to offset
+        if offset > self.bb.len() as i32 {
+            self.bb.resize((offset + integer::BYTES) as usize);
+        }
         self.bb.set_rpos(offset as usize);
         self.bb.read_i32() // move rpos from offset to offset + 4
     }
 
     pub fn set_int(&mut self, offset: i32, n: i32) -> () {
+        println!("set_int: offset: {}, n: {}", offset, n);
+        // padding 0 to offset
+        if offset > self.bb.len() as i32 {
+            self.bb.resize((offset + integer::BYTES) as usize);
+        }
         self.bb.set_wpos(offset as usize);
         self.bb.write_i32(n) // move wpos from offset to offset + 4
     }
@@ -59,6 +70,11 @@ impl Page {
     /// 2. write i32 (named l) to wpos
     /// 3. write bytes from wpos + 4 to wpos + 4 + l
     pub fn set_bytes(&mut self, offset: i32, b: Vec<u8>) -> () {
+        // padding 0 to offset
+        let expexted_page_size = offset + integer::BYTES + b.len() as i32;
+        if expexted_page_size > self.bb.len() as i32 {
+            self.bb.resize(expexted_page_size as usize);
+        }
         self.bb.set_wpos(offset as usize);
         self.bb.write_i32(b.len() as i32);
         self.bb.write_bytes(&b);
