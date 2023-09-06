@@ -18,7 +18,7 @@ pub struct BufferMgr {
 }
 
 impl BufferMgr {
-    pub fn new(fm: FileMgr, lm: LogMgr, numbuffs: i32) -> Self {
+    pub fn new(fm: FileMgr, lm: Arc<Mutex<LogMgr>>, numbuffs: i32) -> Self {
         let mut buffer_pool = Vec::new();
         for _ in 0..numbuffs {
             buffer_pool.push(Arc::new(Mutex::new(Buffer::new(fm.clone(), lm.clone()))));

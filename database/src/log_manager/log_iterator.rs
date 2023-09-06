@@ -15,7 +15,14 @@ impl Iterator for LogIterator {
     type Item = Vec<u8>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        let has_next = self.current_pos < self.fm.block_size() || self.blk.number() > 0;
+        if !has_next {
+            return None;
+        }
         if self.current_pos == self.fm.block_size() {
+            if self.blk.number() == 0 {
+                panic!("the end of the log has been reached");
+            }
             self.blk = BlockId::new(self.blk.filename(), self.blk.number() - 1);
             self.move_to_block();
         }

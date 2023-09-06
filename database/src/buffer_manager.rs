@@ -9,6 +9,7 @@ mod tests {
     use crate::file_manager::page::Page;
     use crate::log_manager::log_mgr::LogMgr;
     use std::fs;
+    use std::sync::{Arc, Mutex};
 
     fn setup(db_directory: String) -> () {
         // delete db_directory if exists
@@ -24,7 +25,9 @@ mod tests {
         setup(db_directory.clone());
 
         let mut fm = FileMgr::new(db_directory.clone(), 20);
-        let log_mgr = LogMgr::new(fm.clone(), log_file.clone()).unwrap(); //  create testfile and 0 padding for 400 bytes
+        let log_mgr = Arc::new(Mutex::new(
+            LogMgr::new(fm.clone(), log_file.clone()).unwrap(),
+        )); //  create testfile and 0 padding for 400 bytes
         let mut bm = BufferMgr::new(fm.clone(), log_mgr.clone(), 3); // 3 buffers
 
         let buffer1 = bm.pin(BlockId::new("testfile".to_string(), 1)); // pin block 1
@@ -72,7 +75,9 @@ mod tests {
         setup(db_directory.clone());
 
         let fm = FileMgr::new(db_directory.clone(), 20);
-        let log_mgr = LogMgr::new(fm.clone(), log_file.clone()).unwrap(); //  create testfile and 0 padding for 400 bytes
+        let log_mgr = Arc::new(Mutex::new(
+            LogMgr::new(fm.clone(), log_file.clone()).unwrap(),
+        )); //  create testfile and 0 padding for 400 bytes
         let mut bm = BufferMgr::new(fm.clone(), log_mgr.clone(), 6); // 3 buffers
         assert_eq!(bm.available(), 6);
         let mut buff = vec![None; 6];

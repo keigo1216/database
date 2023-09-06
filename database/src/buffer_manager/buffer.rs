@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::file_manager::block_id::BlockId;
 use crate::file_manager::file_mgr::FileMgr;
 use crate::file_manager::page::Page;
@@ -6,7 +8,7 @@ use crate::log_manager::log_mgr::LogMgr;
 #[derive(Clone)]
 pub struct Buffer {
     fm: FileMgr,
-    lm: LogMgr,
+    lm: Arc<Mutex<LogMgr>>,
     contents: Page,
     blk: Option<BlockId>,
     pub pins: i32,
@@ -15,7 +17,7 @@ pub struct Buffer {
 }
 
 impl Buffer {
-    pub fn new(fm: FileMgr, lm: LogMgr) -> Self {
+    pub fn new(fm: FileMgr, lm: Arc<Mutex<LogMgr>>) -> Self {
         let contents = Page::new(fm.block_size());
         Self {
             fm,
@@ -64,7 +66,11 @@ impl Buffer {
 
     pub fn flush(&mut self) {
         if self.txnum >= 0 {
-            self.lm.flush(self.lsn);
+            {
+                // get lock on log manager
+                let mut lm_ = self.lm.lock().unwrap();
+                lm_.flush(self.lsn);
+            }
             match self.blk.clone() {
                 Some(blk) => self.fm.write(&blk, &mut self.contents).unwrap(),
                 None => panic!("Buffer is not assigned to block"),
