@@ -177,14 +177,12 @@ mod tests {
         let mut rp = RecordPage::new(&mut tx, blk.clone(), layout);
         rp.format(&mut tx);
 
-
         let mut slot = rp.insert_after(&mut tx, -1);
         // check insert_after
         assert_eq!(slot, 0);
         // set field
         rp.set_int(&mut tx, slot, &"A".to_string(), 100);
         rp.set_string(&mut tx, slot, &"B".to_string(), format!("rec{}", 100));
-
 
         slot = rp.insert_after(&mut tx, slot);
         // check insert_after
@@ -193,15 +191,20 @@ mod tests {
         rp.set_int(&mut tx, slot, &"A".to_string(), 120);
         rp.set_string(&mut tx, slot, &"B".to_string(), format!("rec{}", 120));
 
-
         // Check disk content
         let mut slot = rp.next_after(&mut tx, -1);
         assert_eq!(rp.get_int(&mut tx, slot, &"A".to_string()), 100);
-        assert_eq!(rp.get_string(&mut tx, slot, &"B".to_string()), format!("rec{}", 100));
-        
+        assert_eq!(
+            rp.get_string(&mut tx, slot, &"B".to_string()),
+            format!("rec{}", 100)
+        );
+
         slot = rp.next_after(&mut tx, slot);
         assert_eq!(rp.get_int(&mut tx, slot, &"A".to_string()), 120);
-        assert_eq!(rp.get_string(&mut tx, slot, &"B".to_string()), format!("rec{}", 120));
+        assert_eq!(
+            rp.get_string(&mut tx, slot, &"B".to_string()),
+            format!("rec{}", 120)
+        );
 
         // Check search_after
         assert_eq!(rp.search_after(&mut tx, slot, USED), -1);
