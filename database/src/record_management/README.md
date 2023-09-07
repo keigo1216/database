@@ -31,3 +31,4 @@ Record Managerがこれを解決する.
 - scheme: テーブルのそれぞれの要素の情報
 - layout: テーブルの情報（schemeを集めたもの）
 - record_page: テーブルへ実際の値を入れるときに使う
+- table_scan: テーブルへのデータの挿入（これはrecord_pageのラップ）やレコードの探索をするときに使う
