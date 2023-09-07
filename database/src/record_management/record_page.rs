@@ -4,7 +4,7 @@ use crate::record_management::schema::Type;
 use crate::transaction_manager::transaction::Transaction;
 
 const EMPTY: i32 = 0;
-const USED: i32 = 0;
+const USED: i32 = 1;
 
 /// Homogeneous: all records in same table have same file
 /// unspanned: no split record
@@ -92,11 +92,14 @@ impl RecordPage {
         }
     }
 
+    pub fn block(&self) -> BlockId {
+        self.blk.clone()
+    }
+
     /// set empty/inuse flag to indicate if a record is empty or inuse
     /// @param slot: the slot number of the record
     /// @param flag: EMPTY or USED
     fn set_flag(&mut self, tx: &mut Transaction, slot: i32, flag: i32) {
-        println!("slot: {:?}", slot);
         tx.set_int(self.blk.clone(), Self::offset(self, slot), flag, true);
     }
 
@@ -119,7 +122,6 @@ impl RecordPage {
     fn search_after(&mut self, tx: &mut Transaction, mut slot: i32, flag: i32) -> i32 {
         slot += 1;
         while self.is_valid_slot(tx, slot) {
-            println!("slot: {}", slot);
             if tx.get_int(self.blk.clone(), Self::offset(self, slot)) == flag {
                 return slot;
             }
@@ -175,38 +177,41 @@ mod tests {
         let mut rp = RecordPage::new(&mut tx, blk.clone(), layout);
         rp.format(&mut tx);
 
+
         let mut slot = rp.insert_after(&mut tx, -1);
         // check insert_after
         assert_eq!(slot, 0);
+        // set field
+        rp.set_int(&mut tx, slot, &"A".to_string(), 100);
+        rp.set_string(&mut tx, slot, &"B".to_string(), format!("rec{}", 100));
 
-        while slot >= 0 {
-            let n = 50 + slot;
-            rp.set_int(&mut tx, slot, &"A".to_string(), n);
-            rp.set_string(&mut tx, slot, &"B".to_string(), format!("rec{}", n));
-            slot = rp.insert_after(&mut tx, slot);
-        }
 
-        // Get record set UESD
+        slot = rp.insert_after(&mut tx, slot);
+        // check insert_after
+        assert_eq!(slot, 1);
+        // set field
+        rp.set_int(&mut tx, slot, &"A".to_string(), 120);
+        rp.set_string(&mut tx, slot, &"B".to_string(), format!("rec{}", 120));
+
+
+        // Check disk content
+        let mut slot = rp.next_after(&mut tx, -1);
+        assert_eq!(rp.get_int(&mut tx, slot, &"A".to_string()), 100);
+        assert_eq!(rp.get_string(&mut tx, slot, &"B".to_string()), format!("rec{}", 100));
+        
+        slot = rp.next_after(&mut tx, slot);
+        assert_eq!(rp.get_int(&mut tx, slot, &"A".to_string()), 120);
+        assert_eq!(rp.get_string(&mut tx, slot, &"B".to_string()), format!("rec{}", 120));
+
+        // Check search_after
+        assert_eq!(rp.search_after(&mut tx, slot, USED), -1);
+
+        // Check delete
         slot = rp.next_after(&mut tx, -1);
-
-        while slot >= 0 {
-            let n = 50 + slot;
-
-            // check set_int and get_int
-            assert_eq!(rp.get_int(&mut tx, slot, &"A".to_string()), n);
-            // check set_string and get_string
-            assert_eq!(
-                rp.get_string(&mut tx, slot, &"B".to_string()),
-                format!("rec{}", n)
-            );
-
-            // check delete
-            rp.delete(&mut tx, slot);
-            let next_empty_slot = rp.search_after(&mut tx, slot - 1, EMPTY);
-            assert_eq!(next_empty_slot, slot);
-
-            slot = rp.next_after(&mut tx, slot);
-        }
+        rp.delete(&mut tx, slot);
+        slot = rp.next_after(&mut tx, slot);
+        rp.delete(&mut tx, slot);
+        assert_eq!(rp.search_after(&mut tx, -1, USED), -1);
 
         tx.unpin(blk.clone());
         tx.commit();
