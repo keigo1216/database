@@ -8,7 +8,7 @@ use super::schema::Type;
 
 /// Create a instance for each database table
 /// A layout is a collection of offsets for each field in a record
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Layout {
     schema: Schema,
     offsets: HashMap<String, i32>,

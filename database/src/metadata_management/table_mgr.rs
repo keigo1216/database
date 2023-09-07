@@ -5,7 +5,7 @@ use crate::record_management::schema::Schema;
 use crate::record_management::table_scan::TableScan;
 use crate::transaction_manager::transaction::Transaction;
 
-const MAX_NAME: i32 = 16;
+pub const MAX_NAME: i32 = 16;
 
 /// Table Catalog
 /// This table is for manages table data
@@ -13,6 +13,7 @@ const MAX_NAME: i32 = 16;
 /// | TblName | SlotSize |
 /// fcat is a table for storing metadata of all fields
 /// | TblName | FieldName | Type | Length | Offset |
+#[derive(Debug, Clone)]
 pub struct TableMgr {
     tcat_layout: Layout,
     fcat_layout: Layout,
