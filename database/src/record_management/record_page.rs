@@ -11,57 +11,62 @@ const USED: i32 = 0;
 /// fixed-length: all records have same length
 /// | empty/inuse | record 1 | empty/inuse | record 2 | empty/inuse | record 3 | ...
 pub struct RecordPage {
-    tx: Transaction,
     blk: BlockId,
     layout: Layout,
 }
 
 impl RecordPage {
-    pub fn new(mut tx: Transaction, blk: BlockId, layout: Layout) -> Self {
+    pub fn new(tx: &mut Transaction, blk: BlockId, layout: Layout) -> Self {
         tx.pin(blk.clone());
-        Self { tx, blk, layout }
+        Self { blk, layout }
     }
 
-    pub fn get_int(&mut self, slot: i32, field_name: &String) -> i32 {
+    pub fn get_int(&mut self, tx: &mut Transaction, slot: i32, field_name: &String) -> i32 {
         let fldpos = self.offset(slot) + self.layout.offset(field_name);
-        return self.tx.get_int(self.blk.clone(), fldpos);
+        return tx.get_int(self.blk.clone(), fldpos);
     }
 
-    pub fn get_string(&mut self, slot: i32, field_name: &String) -> String {
+    pub fn get_string(&mut self, tx: &mut Transaction, slot: i32, field_name: &String) -> String {
         let fldpos = self.offset(slot) + self.layout.offset(field_name);
-        return self.tx.get_string(self.blk.clone(), fldpos).clone();
+        return tx.get_string(self.blk.clone(), fldpos).clone();
     }
 
-    pub fn set_int(&mut self, slot: i32, field_name: &String, val: i32) {
+    pub fn set_int(&mut self, tx: &mut Transaction, slot: i32, field_name: &String, val: i32) {
         let fldpos = self.offset(slot) + self.layout.offset(field_name);
-        self.tx.set_int(self.blk.clone(), fldpos, val, true);
+        tx.set_int(self.blk.clone(), fldpos, val, true);
     }
 
-    pub fn set_string(&mut self, slot: i32, field_name: &String, val: String) {
+    pub fn set_string(
+        &mut self,
+        tx: &mut Transaction,
+        slot: i32,
+        field_name: &String,
+        val: String,
+    ) {
         let fldpos = self.offset(slot) + self.layout.offset(field_name);
-        self.tx.set_string(self.blk.clone(), fldpos, val, true);
+        tx.set_string(self.blk.clone(), fldpos, val, true);
     }
 
-    pub fn delete(&mut self, slot: i32) {
-        self.set_flag(slot, EMPTY);
+    pub fn delete(&mut self, tx: &mut Transaction, slot: i32) {
+        self.set_flag(tx, slot, EMPTY);
     }
 
     /// return the first record setting empty/inuse flag to USED
     /// @return: the slot number of the record
     /// if no record is found, return -1
     /// @return: the slot number of the record
-    pub fn next_after(&mut self, slot: i32) -> i32 {
-        self.search_after(slot, USED)
+    pub fn next_after(&mut self, tx: &mut Transaction, slot: i32) -> i32 {
+        self.search_after(tx, slot, USED)
     }
 
     /// search for the first empty record and set empty/inuse flag to USED and return the slot number
     /// @param slot: the slot number of the record
     /// if no empty record is found, return -1
     /// @return: the slot number of the record
-    pub fn insert_after(&mut self, slot: i32) -> i32 {
-        let new_slot = self.search_after(slot, EMPTY);
+    pub fn insert_after(&mut self, tx: &mut Transaction, slot: i32) -> i32 {
+        let new_slot = self.search_after(tx, slot, EMPTY);
         if new_slot >= 0 {
-            self.set_flag(new_slot, USED);
+            self.set_flag(tx, new_slot, USED);
         }
         return new_slot;
     }
@@ -70,21 +75,17 @@ impl RecordPage {
     /// set empty/inuse flag to empty
     /// set INTEGER to 0
     /// set VARCHAR to ""
-    pub fn format(&mut self) {
+    pub fn format(&mut self, tx: &mut Transaction) {
         let mut slot = 0;
-        while self.is_valid_slot(slot) {
-            self.tx
-                .set_int(self.blk.clone(), Self::offset(&self, slot), EMPTY, false);
+        while self.is_valid_slot(tx, slot) {
+            tx.set_int(self.blk.clone(), Self::offset(&self, slot), EMPTY, false);
             let sch = self.layout.schema();
             for field_name in sch.get_fields().iter() {
                 let fldpot = self.offset(slot) + self.layout.offset(field_name);
                 println!("field_name: {}, offset: {}", field_name, fldpot);
                 match sch.get_type_(field_name).into() {
-                    Type::INTEGER => self.tx.set_int(self.blk.clone(), fldpot, 0, false),
-                    Type::VARCHAR => {
-                        self.tx
-                            .set_string(self.blk.clone(), fldpot, "".to_string(), false)
-                    }
+                    Type::INTEGER => tx.set_int(self.blk.clone(), fldpot, 0, false),
+                    Type::VARCHAR => tx.set_string(self.blk.clone(), fldpot, "".to_string(), false),
                 }
             }
             slot += 1;
@@ -94,10 +95,9 @@ impl RecordPage {
     /// set empty/inuse flag to indicate if a record is empty or inuse
     /// @param slot: the slot number of the record
     /// @param flag: EMPTY or USED
-    fn set_flag(&mut self, slot: i32, flag: i32) {
+    fn set_flag(&mut self, tx: &mut Transaction, slot: i32, flag: i32) {
         println!("slot: {:?}", slot);
-        self.tx
-            .set_int(self.blk.clone(), Self::offset(self, slot), flag, true);
+        tx.set_int(self.blk.clone(), Self::offset(self, slot), flag, true);
     }
 
     /// return true if the slot is valid
@@ -109,18 +109,18 @@ impl RecordPage {
     /// slot 3: offset = 303, size = 101 (offset(slot + 1) = 404 > 400)
     /// slot 4: offset = 404, size = 101 (offset(slot + 1) = 505 > 400) -> invalid
     /// @param slot: the slot number of the record
-    fn is_valid_slot(&self, slot: i32) -> bool {
-        self.offset(slot + 1) <= self.tx.block_size()
+    fn is_valid_slot(&self, tx: &mut Transaction, slot: i32) -> bool {
+        self.offset(slot + 1) <= tx.block_size()
     }
 
     /// search for the first record (start from slot + 1) with the given flag
     /// @param slot: the slot number of the record
     /// @param flag: EMPTY or USED
-    fn search_after(&mut self, mut slot: i32, flag: i32) -> i32 {
+    fn search_after(&mut self, tx: &mut Transaction, mut slot: i32, flag: i32) -> i32 {
         slot += 1;
-        while self.is_valid_slot(slot) {
+        while self.is_valid_slot(tx, slot) {
             println!("slot: {}", slot);
-            if self.tx.get_int(self.blk.clone(), Self::offset(self, slot)) == flag {
+            if tx.get_int(self.blk.clone(), Self::offset(self, slot)) == flag {
                 return slot;
             }
             slot += 1;
@@ -172,41 +172,44 @@ mod tests {
         let layout = Layout::new_from_schema(sch.clone());
         let blk = tx.append(log_file.clone());
         tx.pin(blk.clone());
-        let mut rp = RecordPage::new(tx, blk.clone(), layout);
-        rp.format();
+        let mut rp = RecordPage::new(&mut tx, blk.clone(), layout);
+        rp.format(&mut tx);
 
-        let mut slot = rp.insert_after(-1);
+        let mut slot = rp.insert_after(&mut tx, -1);
         // check insert_after
         assert_eq!(slot, 0);
 
         while slot >= 0 {
             let n = 50 + slot;
-            rp.set_int(slot, &"A".to_string(), n);
-            rp.set_string(slot, &"B".to_string(), format!("rec{}", n));
-            slot = rp.insert_after(slot);
+            rp.set_int(&mut tx, slot, &"A".to_string(), n);
+            rp.set_string(&mut tx, slot, &"B".to_string(), format!("rec{}", n));
+            slot = rp.insert_after(&mut tx, slot);
         }
 
         // Get record set UESD
-        slot = rp.next_after(-1);
+        slot = rp.next_after(&mut tx, -1);
 
         while slot >= 0 {
             let n = 50 + slot;
 
             // check set_int and get_int
-            assert_eq!(rp.get_int(slot, &"A".to_string()), n);
+            assert_eq!(rp.get_int(&mut tx, slot, &"A".to_string()), n);
             // check set_string and get_string
-            assert_eq!(rp.get_string(slot, &"B".to_string()), format!("rec{}", n));
+            assert_eq!(
+                rp.get_string(&mut tx, slot, &"B".to_string()),
+                format!("rec{}", n)
+            );
 
             // check delete
-            rp.delete(slot);
-            let next_empty_slot = rp.search_after(slot - 1, EMPTY);
+            rp.delete(&mut tx, slot);
+            let next_empty_slot = rp.search_after(&mut tx, slot - 1, EMPTY);
             assert_eq!(next_empty_slot, slot);
 
-            slot = rp.next_after(slot);
+            slot = rp.next_after(&mut tx, slot);
         }
 
-        rp.tx.unpin(blk.clone());
-        rp.tx.commit();
+        tx.unpin(blk.clone());
+        tx.commit();
 
         teardown();
         Ok(())
