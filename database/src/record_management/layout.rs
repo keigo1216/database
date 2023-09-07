@@ -44,8 +44,8 @@ impl Layout {
         }
     }
 
-    pub fn schema(&self) -> &Schema {
-        &self.schema
+    pub fn schema(&self) -> Schema {
+        self.schema.clone()
     }
 
     pub fn offset(&self, field_name: &String) -> i32 {

@@ -11,6 +11,7 @@ use crate::log_manager::log_mgr::LogMgr;
 use crate::transaction_manager::concurrency_manager::concurrency_mgr::ConcurrencyMgr;
 use crate::transaction_manager::recovery_manager::RecoveryMgr;
 
+#[derive(Debug)]
 pub struct BufferList {
     buffers: HashMap<BlockId, Arc<Mutex<Buffer>>>,
     pins: Vec<BlockId>,
@@ -234,6 +235,7 @@ impl Transaction {
     }
 
     pub fn block_size(&self) -> i32 {
+        println!("Hello");
         self.fm.block_size()
     }
 
