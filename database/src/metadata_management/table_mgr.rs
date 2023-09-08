@@ -98,7 +98,7 @@ impl TableMgr {
                 let fldlen = fcat.get_int(tx, &"length".to_string());
                 let offset = fcat.get_int(tx, &"offset".to_string());
                 sch.add_field(fldname.clone(), fldtype.into(), fldlen);
-                offsets.insert(fldname, offset);
+                offsets.insert(fldname.clone(), offset);
             }
         }
         fcat.close(tx);

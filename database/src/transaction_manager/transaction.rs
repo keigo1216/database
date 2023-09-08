@@ -50,7 +50,15 @@ impl BufferList {
                     let mut bm_ = self.bm.lock().unwrap();
                     bm_.unpin(buf);
                 }
-                self.pins.retain(|b| b != &blk); // remove blk from pins
+
+                // remove blk from pins at first
+                match self.pins.iter().position(|b| b == &blk) {
+                    Some(index) => {
+                        self.pins.remove(index);
+                    }
+                    None => panic!("Transaction::unpin: failed to remove blk from pins"),
+                }
+                
                 if !self.pins.contains(&blk) {
                     self.buffers.remove(&blk);
                 }
@@ -188,7 +196,6 @@ impl Transaction {
                 {
                     // lock the buffer
                     let mut b_ = b.lock().unwrap();
-                    println!("offset: {}", offset);
                     if ok_to_log {
                         lsn = self.recovery_mgr.set_int(&mut b_, offset, val);
                     }
@@ -235,7 +242,6 @@ impl Transaction {
     }
 
     pub fn block_size(&self) -> i32 {
-        println!("Hello");
         self.fm.block_size()
     }
 

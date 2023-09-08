@@ -5,7 +5,7 @@ use crate::record_management::rid::RID;
 use crate::transaction_manager::transaction::Transaction;
 
 pub struct TableScan {
-    layout: Layout,
+    pub layout: Layout,
     rp: RecordPage,
     filename: String,
     current_slot: i32,
@@ -223,6 +223,7 @@ mod tests {
         }
         assert_eq!(ts.current_slot, -1);
 
+        ts.close(&mut tx);
         tx.commit();
         Ok(())
     }

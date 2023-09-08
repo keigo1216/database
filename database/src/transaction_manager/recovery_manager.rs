@@ -87,7 +87,6 @@ impl RecoveryMgr {
     }
 
     pub fn set_int(&self, buff: &mut Buffer, offset: i32, _new_val: i32) -> i32 {
-        println!("buff: {:?}, offset: {:?}", buff.contents(), offset);
         let old_val = buff.contents().get_int(offset).unwrap();
         let blk = buff.block().unwrap();
         {
@@ -115,7 +114,6 @@ impl RecoveryMgr {
             while let Some(bytes) = iter.next() {
                 let rec = LogRecord::create_log_record(bytes);
                 if let Some(txnum) = rec.tx_number() {
-                    println!("rec: {:?}", rec);
                     if txnum == self.txnum {
                         match rec {
                             LogRecordType::START(_) => break, // arrived at the start record of this transaction
