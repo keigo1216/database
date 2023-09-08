@@ -58,7 +58,7 @@ impl BufferList {
                     }
                     None => panic!("Transaction::unpin: failed to remove blk from pins"),
                 }
-                
+
                 if !self.pins.contains(&blk) {
                     self.buffers.remove(&blk);
                 }

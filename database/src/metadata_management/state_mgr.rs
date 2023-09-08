@@ -22,7 +22,12 @@ impl StatMgr {
         return stat_mgr;
     }
 
-    pub fn get_stat_info(&mut self, tblname: String, layout: Layout, tx: &mut Transaction) -> StateInfo {
+    pub fn get_stat_info(
+        &mut self,
+        tblname: String,
+        layout: Layout,
+        tx: &mut Transaction,
+    ) -> StateInfo {
         self.num_calls += 1;
         if self.num_calls % 100 == 0 {
             self.refresh_statistics(tx);
@@ -52,7 +57,12 @@ impl StatMgr {
     }
 
     /// caclulate the statistics of a table (at table name is tblname and layout is layout)
-    fn calc_table_state(&mut self, tblname: String, layout: Layout, tx: &mut Transaction) -> StateInfo {
+    fn calc_table_state(
+        &mut self,
+        tblname: String,
+        layout: Layout,
+        tx: &mut Transaction,
+    ) -> StateInfo {
         let mut num_recs = 0;
         let mut num_blocks = 0;
         let mut ts = TableScan::new(tx, tblname.clone(), layout.clone());
@@ -98,8 +108,8 @@ mod tests {
     use anyhow::Result;
     use std::fs;
 
-    use crate::SimpleDB;
     use crate::record_management::schema::Schema;
+    use crate::SimpleDB;
 
     fn setup() {
         let db_directory = "./db".to_string();
