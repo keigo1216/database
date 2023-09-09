@@ -121,6 +121,13 @@ mod tests {
         }
     }
 
+    fn teardown() {
+        let db_directory = "./db".to_string();
+        if fs::metadata(db_directory.clone()).is_ok() {
+            fs::remove_dir_all(db_directory.clone()).unwrap();
+        }
+    }
+
     #[test]
     fn test_state_mgr() -> Result<()> {
         setup();
@@ -157,6 +164,7 @@ mod tests {
 
         ts.close(&mut tx);
         tx.commit();
+        teardown();
         Ok(())
     }
 }

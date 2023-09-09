@@ -73,8 +73,8 @@ impl IndexMgr {
                     .stat_mgr
                     .get_stat_info(tblname.clone(), tbl_layout.clone(), tx);
                 let index_info =
-                    IndexInfo::new(idxname.clone(), fldname, tbl_layout.schema(), tblsi);
-                result.insert(idxname.clone(), index_info);
+                    IndexInfo::new(idxname.clone(), fldname.clone(), tbl_layout.schema(), tblsi);
+                result.insert(fldname.clone(), index_info);
             }
         }
         ts.close(tx);
@@ -144,6 +144,13 @@ mod tests {
         }
     }
 
+    fn teardown() {
+        let db_directory = "./db".to_string();
+        if fs::metadata(db_directory.clone()).is_ok() {
+            fs::remove_dir_all(db_directory.clone()).unwrap();
+        }
+    }
+
     #[test]
     fn test_index_mgr() -> Result<()> {
         setup();
@@ -186,17 +193,18 @@ mod tests {
         let indexes = idxmgr.get_index_info("student".to_string(), &mut tx);
         assert_eq!(indexes.len(), 2);
 
-        let sid_info = indexes.get("sidIdx").unwrap();
+        let sid_info = indexes.get("sid").unwrap();
         assert_eq!(sid_info.si.records_output(), 2);
         assert_eq!(sid_info.si.distinct_values(&"sid".to_string()), 1);
         assert_eq!(sid_info.blocks_accessed(&mut tx), 0);
 
-        let sname_info = indexes.get("snameIdx").unwrap();
+        let sname_info = indexes.get("sname").unwrap();
         assert_eq!(sid_info.si.records_output(), 2);
         assert_eq!(sid_info.si.distinct_values(&"sname".to_string()), 1);
         assert_eq!(sname_info.blocks_accessed(&mut tx), 0);
 
         tx.commit();
+        teardown();
         Ok(())
     }
 }
