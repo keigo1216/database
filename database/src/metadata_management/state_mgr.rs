@@ -5,6 +5,7 @@ use crate::record_management::layout::Layout;
 use crate::record_management::table_scan::TableScan;
 use crate::transaction_manager::transaction::Transaction;
 
+#[derive(Clone)]
 pub struct StatMgr {
     tbl_mgr: TableMgr,
     table_states: HashMap<String, StateInfo>,
@@ -32,6 +33,7 @@ impl StatMgr {
         if self.num_calls % 100 == 0 {
             self.refresh_statistics(tx);
         }
+
         let si = self.table_states.get(&tblname);
         match si {
             Some(si) => si.clone(),
@@ -47,6 +49,7 @@ impl StatMgr {
         while tcat.next(tx) {
             // get table name and its layout
             let tblname = tcat.get_string(tx, &"tblname".to_string());
+            // println!("tblname: {}", tblname);
             let layout = self.tbl_mgr.get_layout(tblname.clone(), tx);
             // recalculate the statistics of the table
             let si = self.calc_table_state(tblname.clone(), layout, tx);

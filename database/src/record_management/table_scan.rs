@@ -1,3 +1,4 @@
+use crate::common::Constant;
 use crate::file_manager::block_id::BlockId;
 use crate::record_management::layout::Layout;
 use crate::record_management::record_page::RecordPage;
@@ -64,6 +65,13 @@ impl TableScan {
         self.rp.get_string(tx, self.current_slot, field_name)
     }
 
+    pub fn get_value(&mut self, tx: &mut Transaction, field_name: &String) -> Constant {
+        match self.layout.schema().get_type_(field_name) {
+            0 => Constant::Int(self.get_int(tx, field_name)),
+            _ => Constant::String(self.get_string(tx, field_name)),
+        }
+    }
+
     /// whether the field exists in the schema
     /// @return: true if the field exists
     /// @return: false if the field does not exist
@@ -83,6 +91,13 @@ impl TableScan {
     /// @return: the string value
     pub fn set_string(&mut self, tx: &mut Transaction, field_name: &String, val: String) {
         self.rp.set_string(tx, self.current_slot, field_name, val);
+    }
+
+    pub fn set_value(&mut self, tx: &mut Transaction, field_name: &String, val: Constant) {
+        match val {
+            Constant::Int(val) => self.set_int(tx, field_name, val),
+            Constant::String(val) => self.set_string(tx, field_name, val),
+        }
     }
 
     /// allocate new record space

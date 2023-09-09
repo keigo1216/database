@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 pub mod buffer_manager;
 pub mod common;
 pub mod file_manager;
+pub mod indexing;
 pub mod log_manager;
 pub mod metadata_management;
 pub mod record_management;
