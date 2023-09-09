@@ -41,7 +41,6 @@ impl Page {
     }
 
     pub fn set_int(&mut self, offset: i32, n: i32) -> () {
-        println!("set_int: offset: {}, n: {}", offset, n);
         // padding 0 to offset
         if offset > self.bb.len() as i32 {
             self.bb.resize((offset + integer::BYTES) as usize);

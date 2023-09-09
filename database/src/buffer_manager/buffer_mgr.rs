@@ -12,6 +12,7 @@ mod constants {
 
 /// this class manages the pinning and unpinning of buffers to blocks
 /// this instance is created during system startup and each database has one instance
+#[derive(Debug)]
 pub struct BufferMgr {
     buffer_pool: Vec<Arc<Mutex<Buffer>>>,
     num_available: i32,

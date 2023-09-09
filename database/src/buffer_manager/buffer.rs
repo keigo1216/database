@@ -5,7 +5,7 @@ use crate::file_manager::file_mgr::FileMgr;
 use crate::file_manager::page::Page;
 use crate::log_manager::log_mgr::LogMgr;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Buffer {
     fm: FileMgr,
     lm: Arc<Mutex<LogMgr>>,

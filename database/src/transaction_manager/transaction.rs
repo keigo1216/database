@@ -11,6 +11,7 @@ use crate::log_manager::log_mgr::LogMgr;
 use crate::transaction_manager::concurrency_manager::concurrency_mgr::ConcurrencyMgr;
 use crate::transaction_manager::recovery_manager::RecoveryMgr;
 
+#[derive(Debug)]
 pub struct BufferList {
     buffers: HashMap<BlockId, Arc<Mutex<Buffer>>>,
     pins: Vec<BlockId>,
@@ -49,7 +50,15 @@ impl BufferList {
                     let mut bm_ = self.bm.lock().unwrap();
                     bm_.unpin(buf);
                 }
-                self.pins.retain(|b| b != &blk); // remove blk from pins
+
+                // remove blk from pins at first
+                match self.pins.iter().position(|b| b == &blk) {
+                    Some(index) => {
+                        self.pins.remove(index);
+                    }
+                    None => panic!("Transaction::unpin: failed to remove blk from pins"),
+                }
+
                 if !self.pins.contains(&blk) {
                     self.buffers.remove(&blk);
                 }
@@ -187,7 +196,6 @@ impl Transaction {
                 {
                     // lock the buffer
                     let mut b_ = b.lock().unwrap();
-                    println!("offset: {}", offset);
                     if ok_to_log {
                         lsn = self.recovery_mgr.set_int(&mut b_, offset, val);
                     }

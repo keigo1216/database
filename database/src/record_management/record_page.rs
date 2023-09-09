@@ -82,7 +82,6 @@ impl RecordPage {
             let sch = self.layout.schema();
             for field_name in sch.get_fields().iter() {
                 let fldpot = self.offset(slot) + self.layout.offset(field_name);
-                println!("field_name: {}, offset: {}", field_name, fldpot);
                 match sch.get_type_(field_name).into() {
                     Type::INTEGER => tx.set_int(self.blk.clone(), fldpot, 0, false),
                     Type::VARCHAR => tx.set_string(self.blk.clone(), fldpot, "".to_string(), false),
