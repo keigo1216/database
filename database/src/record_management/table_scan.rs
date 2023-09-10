@@ -3,6 +3,7 @@ use crate::file_manager::block_id::BlockId;
 use crate::record_management::layout::Layout;
 use crate::record_management::record_page::RecordPage;
 use crate::record_management::rid::RID;
+use crate::record_management::schema::Type;
 use crate::transaction_manager::transaction::Transaction;
 
 pub struct TableScan {
@@ -66,9 +67,9 @@ impl TableScan {
     }
 
     pub fn get_value(&mut self, tx: &mut Transaction, field_name: &String) -> Constant {
-        match self.layout.schema().get_type_(field_name) {
-            0 => Constant::Int(self.get_int(tx, field_name)),
-            _ => Constant::String(self.get_string(tx, field_name)),
+        match self.layout.schema().get_type_(field_name).into() {
+            Type::INTEGER => Constant::Int(self.get_int(tx, field_name)),
+            Type::VARCHAR => Constant::String(self.get_string(tx, field_name)),
         }
     }
 

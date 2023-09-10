@@ -6,7 +6,9 @@ pub mod file_manager;
 pub mod indexing;
 pub mod log_manager;
 pub mod metadata_management;
+pub mod planning;
 pub mod record_management;
+pub mod scans;
 pub mod transaction_manager;
 
 pub struct SimpleDB {
@@ -46,5 +48,12 @@ impl SimpleDB {
             self.log_mgr.clone(),
             self.buffer_mgr.clone(),
         );
+    }
+
+    pub fn new_metadata_mgr(
+        &self,
+        tx: &mut transaction_manager::transaction::Transaction,
+    ) -> metadata_management::metadata_mgr::MetadataMgr {
+        return metadata_management::metadata_mgr::MetadataMgr::new(true, tx);
     }
 }
