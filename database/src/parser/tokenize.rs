@@ -82,7 +82,7 @@ impl Reserved {
         }
     }
 }
-pub struct Tokenize{}
+pub struct Tokenize {}
 
 impl Tokenize {
     pub fn tokenize(mut s: String) -> VecDeque<TokenKind> {
@@ -228,7 +228,6 @@ impl Tokenize {
                 continue;
             }
 
-
             // match string
             let next = s.chars().next().unwrap();
             if next.is_alphanumeric() || next == '_' || next == '*' {
@@ -259,11 +258,12 @@ impl Tokenize {
         let next = s.chars().nth(reserved_word.len());
         match next {
             Some(c) => {
-                if c.is_alphanumeric() || c == '_' { // not reserved word
+                if c.is_alphanumeric() || c == '_' {
+                    // not reserved word
                     return false;
                 }
-            },
-            None => {},
+            }
+            None => {}
         }
 
         s.replace_range(..reserved_word.len(), "");

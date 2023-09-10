@@ -6,11 +6,11 @@ pub mod file_manager;
 pub mod indexing;
 pub mod log_manager;
 pub mod metadata_management;
+pub mod parser;
 pub mod planning;
 pub mod record_management;
 pub mod scans;
 pub mod transaction_manager;
-pub mod parser;
 
 pub struct SimpleDB {
     _log_file: String,
