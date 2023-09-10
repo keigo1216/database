@@ -284,7 +284,7 @@ mod tests {
 
     #[test]
     fn test_tokenize() -> Result<()> {
-        let s = "select * from student where sname = \"Alice\" and sage < 20 and sname = 'Bob' and sage > 10 and sname != 'Cindy' and sage <= 30 and sname >= 'David'".to_string();
+        let s = "SeLect * from student where sname = \"Alice\" and sage < 20 and sname = 'Bob' and sage > 10 and sname != 'Cindy' and sage <= 30 and sname >= 'David'".to_string();
         let v = Tokenize::tokenize(s);
         assert_eq!(v.len(), 40);
         assert_eq!(v[0], TokenKind::RESERVED(Reserved::SELECT));
