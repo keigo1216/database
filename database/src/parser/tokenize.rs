@@ -11,6 +11,9 @@ pub enum TokenKind {
     LESSEQUAL,
     GREATEREQUAL,
     NOTEQUAL,
+    LPAR,
+    RPAR,
+    COMMA,
     TOK(String),
 }
 
@@ -34,6 +37,7 @@ pub enum Reserved {
     AS,
     INDEX,
     ON,
+    ASTER,
 }
 
 impl Reserved {
@@ -57,6 +61,7 @@ impl Reserved {
             Reserved::AS => 2,
             Reserved::INDEX => 5,
             Reserved::ON => 2,
+            Reserved::ASTER => 1,
         }
     }
     pub fn to_str(&self) -> &str {
@@ -79,114 +84,169 @@ impl Reserved {
             Reserved::AS => "as",
             Reserved::INDEX => "index",
             Reserved::ON => "on",
+            Reserved::ASTER => "*",
         }
     }
 }
-pub struct Tokenize {}
+pub struct Lexer {
+    input: String,
+    tokenized_position: usize,
+    lex_position: usize,
+    tokenized: VecDeque<TokenKind>,
+}
 
-impl Tokenize {
-    pub fn tokenize(mut s: String) -> VecDeque<TokenKind> {
-        let mut v: VecDeque<TokenKind> = VecDeque::new();
+impl Lexer {
+    pub fn new(input: String) -> Self {
+        let mut lex = Self {
+            input,
+            tokenized_position: 0,
+            lex_position: 0,
+            tokenized: VecDeque::new(),
+        };
+        lex.tokenize(); // tokenize input
+        return lex;
+    }
 
+    fn tokenize(&mut self) {
+        let mut s = self.input.clone();
         // tokenize s
         while s.len() > 0 {
-            println!("s: {}", s);
+            self.tokenized_position += 1;
             // skip whitespace
             Self::skip_whitespace(&mut s);
 
             // match reserved words
             if Self::is_reserved_word(&mut s, Reserved::SELECT) {
-                v.push_back(TokenKind::RESERVED(Reserved::SELECT));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::SELECT));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::FROM) {
-                v.push_back(TokenKind::RESERVED(Reserved::FROM));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::FROM));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::WHERE) {
-                v.push_back(TokenKind::RESERVED(Reserved::WHERE));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::WHERE));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::AND) {
-                v.push_back(TokenKind::RESERVED(Reserved::AND));
+                self.tokenized.push_back(TokenKind::RESERVED(Reserved::AND));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::INSERT) {
-                v.push_back(TokenKind::RESERVED(Reserved::INSERT));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::INSERT));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::INTO) {
-                v.push_back(TokenKind::RESERVED(Reserved::INTO));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::INTO));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::VALUES) {
-                v.push_back(TokenKind::RESERVED(Reserved::VALUES));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::VALUES));
 
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::DELETE) {
-                v.push_back(TokenKind::RESERVED(Reserved::DELETE));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::DELETE));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::UPDATE) {
-                v.push_back(TokenKind::RESERVED(Reserved::UPDATE));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::UPDATE));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::SET) {
-                v.push_back(TokenKind::RESERVED(Reserved::SET));
+                self.tokenized.push_back(TokenKind::RESERVED(Reserved::SET));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::CREATE) {
-                v.push_back(TokenKind::RESERVED(Reserved::CREATE));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::CREATE));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::TABLE) {
-                v.push_back(TokenKind::RESERVED(Reserved::TABLE));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::TABLE));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::VARCHAR) {
-                v.push_back(TokenKind::RESERVED(Reserved::VARCHAR));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::VARCHAR));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::INT) {
-                v.push_back(TokenKind::RESERVED(Reserved::INT));
+                self.tokenized.push_back(TokenKind::RESERVED(Reserved::INT));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::VIEW) {
-                v.push_back(TokenKind::RESERVED(Reserved::VIEW));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::VIEW));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::AS) {
-                v.push_back(TokenKind::RESERVED(Reserved::AS));
+                self.tokenized.push_back(TokenKind::RESERVED(Reserved::AS));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::INDEX) {
-                v.push_back(TokenKind::RESERVED(Reserved::INDEX));
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::INDEX));
                 continue;
             }
             if Self::is_reserved_word(&mut s, Reserved::ON) {
-                v.push_back(TokenKind::RESERVED(Reserved::ON));
+                self.tokenized.push_back(TokenKind::RESERVED(Reserved::ON));
+                continue;
+            }
+            if Self::is_reserved_word(&mut s, Reserved::ASTER) {
+                self.tokenized
+                    .push_back(TokenKind::RESERVED(Reserved::ASTER));
+                continue;
+            }
+
+            // match left parenthesis
+            if s.chars().next().unwrap() == '(' {
+                s.remove(0);
+                self.tokenized.push_back(TokenKind::LPAR);
+                continue;
+            }
+
+            // match right parenthesis
+            if s.chars().next().unwrap() == ')' {
+                s.remove(0);
+                self.tokenized.push_back(TokenKind::RPAR);
+                continue;
+            }
+
+            // match comma
+            if s.chars().next().unwrap() == ',' {
+                s.remove(0);
+                self.tokenized.push_back(TokenKind::COMMA);
                 continue;
             }
 
             // match single quote
             if s.chars().next().unwrap() == '\'' {
                 s.remove(0);
-                v.push_back(TokenKind::SINGLEQUOTE);
+                self.tokenized.push_back(TokenKind::SINGLEQUOTE);
                 continue;
             }
 
             // match double quote
             if s.chars().next().unwrap() == '"' {
                 s.remove(0);
-                v.push_back(TokenKind::DOUBLEQUOTE);
+                self.tokenized.push_back(TokenKind::DOUBLEQUOTE);
                 continue;
             }
 
             // match equal
             if s.chars().next().unwrap() == '=' {
                 s.remove(0);
-                v.push_back(TokenKind::EQUAL);
+                self.tokenized.push_back(TokenKind::EQUAL);
                 continue;
             }
 
@@ -194,7 +254,7 @@ impl Tokenize {
             if s.len() > 1 && s.chars().next().unwrap() == '!' && s.chars().nth(1).unwrap() == '=' {
                 s.remove(0);
                 s.remove(0);
-                v.push_back(TokenKind::NOTEQUAL);
+                self.tokenized.push_back(TokenKind::NOTEQUAL);
                 continue;
             }
 
@@ -202,7 +262,7 @@ impl Tokenize {
             if s.len() > 1 && s.chars().next().unwrap() == '>' && s.chars().nth(1).unwrap() == '=' {
                 s.remove(0);
                 s.remove(0);
-                v.push_back(TokenKind::GREATEREQUAL);
+                self.tokenized.push_back(TokenKind::GREATEREQUAL);
                 continue;
             }
 
@@ -210,40 +270,140 @@ impl Tokenize {
             if s.len() > 1 && s.chars().next().unwrap() == '<' && s.chars().nth(1).unwrap() == '=' {
                 s.remove(0);
                 s.remove(0);
-                v.push_back(TokenKind::LESSEQUAL);
+                self.tokenized.push_back(TokenKind::LESSEQUAL);
                 continue;
             }
 
             // match greater
             if s.chars().next().unwrap() == '>' {
                 s.remove(0);
-                v.push_back(TokenKind::GREATER);
+                self.tokenized.push_back(TokenKind::GREATER);
                 continue;
             }
 
             // match less
             if s.chars().next().unwrap() == '<' {
                 s.remove(0);
-                v.push_back(TokenKind::LESS);
+                self.tokenized.push_back(TokenKind::LESS);
                 continue;
             }
 
             // match string
             let next = s.chars().next().unwrap();
-            if next.is_alphanumeric() || next == '_' || next == '*' {
+            if next.is_alphanumeric() || next == '_' {
                 let mut str = String::new();
                 str.push(s.remove(0));
-                while s.len() > 0 && s.chars().next().unwrap().is_alphanumeric() {
+                while s.len() > 0
+                    && (s.chars().next().unwrap().is_alphanumeric()
+                        || s.chars().next().unwrap() == '_')
+                {
                     str.push(s.remove(0));
                 }
-                v.push_back(TokenKind::TOK(str));
+                self.tokenized.push_back(TokenKind::TOK(str));
                 continue;
             } else {
                 panic!("invalid token: {}", s);
             }
         }
+    }
 
-        return v;
+    pub fn eat_int_constant(&mut self) -> i32 {
+        let pos = self.lex_position;
+        let front_token = self.tokenized[pos].clone();
+        if let TokenKind::TOK(t) = front_token {
+            self.lex_position += 1;
+            // return t.parse::<i32>().unwrap();
+            match t.parse::<i32>() {
+                Ok(i) => return i,
+                Err(_) => panic!("expected int"),
+            }
+        } else {
+            panic!("expected int, but got {:?}", front_token);
+        }
+    }
+
+    // pub fn eat_id(&mut self) -> String {
+    //     let mut pos = self.lex_position;
+    //     let front_token = self.tokenized[pos].clone();
+    //     if let TokenKind::TOK(t) = front_token {
+    //         self.lex_position += 1;
+    //         return t.clone();
+    //     } else if let TokenKind::SINGLEQUOTE = front_token {
+    //         pos += 1;
+    //         let front_token = self.tokenized[pos].clone();
+    //         if let TokenKind::TOK(t) = front_token {
+    //             pos += 1;
+
+    //         }
+    //     } else if let TokenKind::DOUBLEQUOTE = front_token {
+
+    //     } else {
+    //         panic!("expected id, but got {:?}", front_token);
+    //     }
+    // }
+
+    pub fn eat_id(&mut self) -> String {
+        let pos = self.lex_position;
+        let front_token = self.tokenized[pos].clone();
+        if front_token == TokenKind::SINGLEQUOTE {
+            self.lex_position += 1;
+            let s = self.eat_string();
+            let pos = self.lex_position;
+            let front_token = self.tokenized[pos].clone();
+            if front_token == TokenKind::SINGLEQUOTE {
+                self.lex_position += 1;
+                return s;
+            } else {
+                panic!("expected single quote, but got {:?}", front_token);
+            }
+        } else if front_token == TokenKind::DOUBLEQUOTE {
+            self.lex_position += 1;
+            let s = self.eat_string();
+            let pos = self.lex_position;
+            let front_token = self.tokenized[pos].clone();
+            if front_token == TokenKind::DOUBLEQUOTE {
+                self.lex_position += 1;
+                return s;
+            } else {
+                panic!("expected single quote, but got {:?}", front_token);
+            }
+        } else {
+            return self.eat_string();
+        }
+    }
+
+    fn eat_string(&mut self) -> String {
+        let pos = self.lex_position;
+        let front_token = self.tokenized[pos].clone();
+        if let TokenKind::TOK(t) = front_token {
+            self.lex_position += 1;
+            return t.clone();
+        } else {
+            panic!("expected string, but got {:?}", front_token);
+        }
+    }
+
+    pub fn eat_keyword(&mut self, keyword: TokenKind) {
+        let pos = self.lex_position;
+        let front_token = self.tokenized[pos].clone();
+        if keyword == front_token {
+            self.lex_position += 1;
+        } else {
+            panic!("expected {:?}, but got {:?}", keyword, front_token);
+        }
+    }
+
+    pub fn match_keyword(&mut self, keyword: TokenKind) -> bool {
+        let pos = self.lex_position;
+        if pos >= self.tokenized.len() {
+            return false;
+        }
+        let front_token = self.tokenized[pos].clone();
+        if keyword == front_token {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     fn is_reserved_word(s: &mut String, reserved_word: Reserved) -> bool {
@@ -285,7 +445,8 @@ mod tests {
     #[test]
     fn test_tokenize() -> Result<()> {
         let s = "SeLect * from student where sname = \"Alice\" and sage < 20 and sname = 'Bob' and sage > 10 and sname != 'Cindy' and sage <= 30 and sname >= 'David'".to_string();
-        let v = Tokenize::tokenize(s);
+        let lex = Lexer::new(s);
+        let v = lex.tokenized;
         assert_eq!(v.len(), 40);
         assert_eq!(v[0], TokenKind::RESERVED(Reserved::SELECT));
         assert_eq!(v[1], TokenKind::TOK("*".to_string()));
