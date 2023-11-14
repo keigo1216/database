@@ -1,5 +1,7 @@
 FROM rust
 
+ENV CARGO_TARGET_DIR=/tmp/target
+
 WORKDIR /usr/src/
 
 RUN apt-get update && \
