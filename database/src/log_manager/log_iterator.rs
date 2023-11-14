@@ -80,8 +80,8 @@ mod tests {
         let db_directory = "./db/logtest";
 
         // delete ./db/logtest
-        if fs::metadata(db_directory.clone()).is_ok() {
-            fs::remove_dir_all(db_directory.clone()).unwrap();
+        if fs::metadata(db_directory).is_ok() {
+            fs::remove_dir_all(db_directory).unwrap();
         }
 
         let mut fm = FileMgr::new(db_directory.to_string(), 20);
@@ -99,8 +99,8 @@ mod tests {
         }
 
         // delete ./db/logtest
-        if fs::metadata(db_directory.clone()).is_ok() {
-            fs::remove_dir_all(db_directory.clone()).unwrap();
+        if fs::metadata(db_directory).is_ok() {
+            fs::remove_dir_all(db_directory).unwrap();
         }
 
         Ok(())

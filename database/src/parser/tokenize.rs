@@ -449,7 +449,7 @@ mod tests {
         let v = lex.tokenized;
         assert_eq!(v.len(), 40);
         assert_eq!(v[0], TokenKind::RESERVED(Reserved::SELECT));
-        assert_eq!(v[1], TokenKind::TOK("*".to_string()));
+        assert_eq!(v[1], TokenKind::RESERVED(Reserved::ASTER));
         assert_eq!(v[2], TokenKind::RESERVED(Reserved::FROM));
         assert_eq!(v[3], TokenKind::TOK("student".to_string()));
         assert_eq!(v[4], TokenKind::RESERVED(Reserved::WHERE));
