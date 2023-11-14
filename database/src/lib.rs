@@ -6,6 +6,7 @@ pub mod file_manager;
 pub mod indexing;
 pub mod log_manager;
 pub mod metadata_management;
+pub mod parser;
 pub mod planning;
 pub mod record_management;
 pub mod scans;
@@ -22,7 +23,8 @@ pub struct SimpleDB {
 
 impl SimpleDB {
     pub fn new(_log_file: String, _block_size: i32, _num_buffer: i32) -> Self {
-        let file_mgr = file_manager::file_mgr::FileMgr::new("./db".to_string(), _block_size);
+        let file_mgr =
+            file_manager::file_mgr::FileMgr::new("./db/logtest".to_string(), _block_size);
         let log_mgr = Arc::new(Mutex::new(
             log_manager::log_mgr::LogMgr::new(file_mgr.clone(), _log_file.clone()).unwrap(),
         ));
